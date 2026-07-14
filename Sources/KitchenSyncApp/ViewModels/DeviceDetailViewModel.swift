@@ -50,11 +50,38 @@ final class DeviceDetailViewModel: ObservableObject {
         if fresh != nil { isRebooting = false }
     }
 
+    /// Why we do or don't have the device's settings.
+    ///
+    /// A 404 and a dead network are DIFFERENT failures. `GET /config.json` landed on
+    /// 2026-07-14; a unit on older firmware 404s on it while status, transport, live
+    /// edits and OTA all keep working. Telling that user their device is unreachable
+    /// is wrong — and telling a user whose WiFi dropped that their firmware is old
+    /// sends them off to reflash a device that was fine.
+    enum ConfigAvailability: Equatable {
+        case unknown
+        case available
+        /// The device answered, but has no `/config.json`. Old firmware. The way OUT
+        /// of this state is an OTA update, so the update path must stay reachable.
+        case unsupportedByFirmware
+        /// Anything else — transport error, 500, garbage body.
+        case failed
+    }
+
+    @Published private(set) var configAvailability: ConfigAvailability = .unknown
+
     /// The device's ACTUAL settings, as opposed to `/status`'s telemetry.
-    /// A device on firmware older than 2026-07-14 has no `/config.json` and will
-    /// 404 here — distinguishing that from a real failure is T-009.
     func loadConfig() async {
-        config = try? await client.fetchConfig()
+        do {
+            config = try await client.fetchConfig()
+            configAvailability = .available
+        } catch KitchenSyncClientError.httpStatus(404) {
+            // The one case we can attribute confidently.
+            config = nil
+            configAvailability = .unsupportedByFirmware
+        } catch {
+            config = nil
+            configAvailability = .failed
+        }
     }
 
     /// Apply one live-safe edit immediately. `KsLiveEdit`'s closed case set is the

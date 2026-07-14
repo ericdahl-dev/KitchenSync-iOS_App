@@ -129,6 +129,54 @@ final class DeviceDetailViewModelTests: XCTestCase {
         XCTAssertTrue(body.contains("led_bright=60"), body)
     }
 
+    // MARK: /config.json is newer than the fleet (T-009)
+    //
+    // GET /config.json landed 2026-07-14. A unit on older firmware 404s on it while
+    // every other route — status, transport, live edits, OTA — still works fine.
+    //
+    // A 404 and a dead network are DIFFERENT failures and must not be conflated:
+    // telling a user their firmware is old when really their WiFi dropped sends them
+    // off to reflash a device that was fine.
+
+    func test_config_404_means_the_firmware_is_too_old_not_that_the_device_is_gone() async {
+        StubURLProtocol.routes["GET /status"] = .init(body: Self.statusJSON)
+        // No /config.json route registered -> the stub answers 404.
+        let vm = makeVM()
+
+        await vm.refreshStatus()
+        await vm.loadConfig()
+
+        XCTAssertEqual(vm.configAvailability, .unsupportedByFirmware)
+        XCTAssertNil(vm.config)
+        // And critically: everything else still works.
+        XCTAssertEqual(vm.status?.bpm, 128.0)
+    }
+
+    func test_config_transport_failure_is_not_blamed_on_firmware() async {
+        // Route the stub to a hard transport error rather than any HTTP response.
+        StubURLProtocol.routes["GET /config.json"] = .init(status: 500, body: Data())
+        let vm = makeVM()
+
+        await vm.loadConfig()
+
+        XCTAssertNotEqual(vm.configAvailability, .unsupportedByFirmware,
+                          "a 500 is not an old-firmware 404 — don't tell the user to reflash")
+        XCTAssertEqual(vm.configAvailability, .failed)
+    }
+
+    func test_a_successful_load_reports_available() async {
+        StubURLProtocol.routes["GET /config.json"] = .init(body: Self.configJSON)
+        let vm = makeVM()
+
+        await vm.loadConfig()
+
+        XCTAssertEqual(vm.configAvailability, .available)
+    }
+
+    func test_availability_starts_unknown_before_any_attempt() {
+        XCTAssertEqual(makeVM().configAvailability, .unknown)
+    }
+
     /// `/save` reboots the device. It will stop answering for several seconds, and
     /// the UI must say "rebooting" rather than "unreachable" — an expected
     /// disappearance is not an error, and a user who just pressed WRITE & REBOOT

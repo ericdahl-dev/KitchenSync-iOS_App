@@ -341,21 +341,43 @@ struct DeviceDetailView: View {
         }
     }
 
-    /// Two very different reasons the config can be missing, and they must not be
-    /// conflated: the device isn't answering AT ALL, or it answered but has no
-    /// `/config.json` (firmware older than 2026-07-14 404s on it, while every other
-    /// route still works). Blaming old firmware for what is really a dead network
-    /// sends the user off to flash a device that was fine.
+    /// Why the settings aren't here — attributed from the actual failure, not guessed
+    /// from whether `/status` happens to be answering.
     ///
-    /// Telling the two apart properly — typing the 404 distinctly from a transport
-    /// failure — is T-009. Until then, lean on whether /status is answering.
+    /// A `/config.json` 404 (firmware older than 2026-07-14) and a dead network are
+    /// different problems with different fixes, and blaming the wrong one sends the
+    /// user off to reflash a device that was fine — or to debug a network that was.
+    ///
+    /// Note what is deliberately NOT offered here: a "save anyway" form. Without the
+    /// read there is no read-modify-write, so a full `/save` built from fabricated
+    /// defaults would clobber settings we were never able to see. The honest move is
+    /// to disable it and say why. The way OUT of the old-firmware state is an OTA
+    /// update (T-008), which is why that path must never be gated behind a successful
+    /// config fetch.
+    @ViewBuilder
     private var configUnavailable: some View {
         KSSectionRail(title: "SETTINGS") {
-            Text(vm.status == nil
-                 ? "This device isn't answering. Check that your phone is on the same network."
-                 : "This device answered but returned no settings. Firmware older than 2026-07-14 has no /config.json — status and transport still work.")
-                .font(.ksMono(12))
-                .foregroundStyle(KS.mut)
+            switch vm.configAvailability {
+            case .unsupportedByFirmware:
+                Text("This device's firmware is older than 2026-07-14 and has no /config.json, so its settings can't be read — and therefore can't be safely changed. Status, transport and live edits still work. Update the firmware to enable settings.")
+                    .font(.ksMono(12))
+                    .foregroundStyle(KS.mut)
+                KSPill(text: "OLD FIRMWARE", color: KS.amber)
+
+            case .failed:
+                Text("Couldn't read this device's settings. It answered, but not with a config.")
+                    .font(.ksMono(12))
+                    .foregroundStyle(KS.mut)
+
+            case .unknown, .available:
+                // .available with no config shouldn't happen; .unknown means the fetch
+                // hasn't finished. Neither is a firmware problem, so don't say it is.
+                Text(vm.status == nil
+                     ? "This device isn't answering. Check that your phone is on the same network."
+                     : "Reading settings…")
+                    .font(.ksMono(12))
+                    .foregroundStyle(KS.mut)
+            }
         }
     }
 
