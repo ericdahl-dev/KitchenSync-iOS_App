@@ -31,9 +31,11 @@ final class LiveEditFeedbackTests: XCTestCase {
     }
 
     /// A one-output device, phase and swing at zero — the Touch, as shipped.
+    /// Dummy SSID: a fixture is a public artifact (repo, CI log, PR diff), and the real
+    /// network's name has no business in one.
     private static let configJSON = """
     {"clock_out":false,
-     "wifi":[{"ssid":"test123","pass_set":true}],
+     "wifi":[{"ssid":"Bench-2G","pass_set":true}],
      "clock":[{"en":false,"cable":0,"ppqn":24,"phase":0,"swing":0,"follow":true}]}
     """.data(using: .utf8)!
 
