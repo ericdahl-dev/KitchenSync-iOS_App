@@ -1,1 +1,0 @@
-KitchenSyncApp.debug.dylib
