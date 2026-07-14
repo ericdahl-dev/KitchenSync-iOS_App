@@ -1,0 +1,79 @@
+name: CI
+
+# Runs on a SELF-HOSTED macOS runner, not a GitHub-hosted one.
+#
+# Why: GitHub bills macOS runners at a 10x minute multiplier on private repos, so a
+# single 5-8 minute build+test burns 50-80 billed minutes. The free allowance
+# (2,000 min/month = 200 macOS minutes) would cover roughly three runs. Untenable
+# for a repo under active development.
+#
+# A self-hosted runner is safe HERE specifically because this repo is private. Do NOT
+# copy this to a public repo — a fork's pull_request can execute arbitrary code on the
+# runner. (That caveat applies to link-devices, which is public.)
+#
+# The suite itself takes 0.7 seconds. All the cost is compiling and booting a
+# simulator, both of which a warm persistent machine keeps around — so incremental
+# runs land in well under a minute.
+
+on:
+  pull_request:
+    paths:
+      - 'Sources/**'
+      - 'Tests/**'
+      - 'project.yml'
+      - '.github/workflows/ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'Sources/**'
+      - 'Tests/**'
+      - 'project.yml'
+      - '.github/workflows/ci.yml'
+  workflow_dispatch:
+
+# Pushing twice in a minute shouldn't queue two builds on a single machine.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: [self-hosted, macOS]
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Environment
+        run: |
+          # The runner service does not inherit a login shell's PATH, so Homebrew
+          # binaries (xcodegen) are not on it by default.
+          echo "/opt/homebrew/bin" >> "$GITHUB_PATH"
+
+      - name: Versions
+        run: |
+          xcodebuild -version
+          /opt/homebrew/bin/xcodegen --version
+
+      # project.yml is the source of truth; the .xcodeproj is gitignored and must be
+      # regenerated. This also regenerates Info.plist — see project.yml's comment.
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Test
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project KitchenSyncApp.xcodeproj \
+            -scheme KitchenSyncApp \
+            -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+            -resultBundlePath TestResults.xcresult \
+            test
+
+      - name: Upload results on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcresult
+          path: TestResults.xcresult
+          retention-days: 7
