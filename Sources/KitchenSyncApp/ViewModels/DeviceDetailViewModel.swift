@@ -104,6 +104,24 @@ final class DeviceDetailViewModel: ObservableObject {
         status = nil
     }
 
+    /// Push a firmware `.bin` over the air, into the inactive OTA slot (dual-slot).
+    ///
+    /// Returns whether the device accepted it. Unlike `save`, this is NOT optimistic:
+    /// a failed flash must not claim the device is rebooting, because dual-slot means
+    /// the device is still happily running its OLD firmware. Telling the user to wait
+    /// for a restart that is never coming is worse than telling them it failed.
+    @discardableResult
+    func uploadFirmware(_ binary: Data) async -> Bool {
+        do {
+            try await client.uploadFirmware(binary)
+            isRebooting = true      // it reboots into the new slot
+            status = nil
+            return true
+        } catch {
+            return false
+        }
+    }
+
     /// Quantized Start / immediate Stop. `output: nil` is the master (`out=all`).
     /// Deliberately does NOT touch `status` — the device computes the launch state
     /// and reports it on the next poll. Guessing it here is how you end up showing

@@ -16,6 +16,7 @@ struct DeviceDetailView: View {
 
     @StateObject private var vm: DeviceDetailViewModel
     @State private var showingSettings = false
+    @State private var showingFirmware = false
 
     init(device: KitchenSyncDevice) {
         self.device = device
@@ -51,9 +52,27 @@ struct DeviceDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button { showingSettings = true } label: { Image(systemName: "gearshape") }
+                Menu {
+                    Button {
+                        showingSettings = true
+                    } label: {
+                        Label("Settings", systemImage: "gearshape")
+                    }
                     .disabled(vm.config == nil)
-                    .accessibilityLabel("Settings — these reboot the device")
+
+                    // NEVER gated behind a successful config fetch. On old firmware
+                    // /config.json 404s (T-009) — and a firmware update is the way OUT
+                    // of that state, so locking it away behind the very thing that's
+                    // broken would strand the user.
+                    Button {
+                        showingFirmware = true
+                    } label: {
+                        Label("Update firmware", systemImage: "arrow.up.circle")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+                .accessibilityLabel("Device actions")
             }
         }
         .sheet(isPresented: $showingSettings) {
@@ -61,6 +80,11 @@ struct DeviceDetailView: View {
                 DeviceSettingsSheet(deviceName: device.displayName, config: config) { draft, wifiEdits in
                     Task { await vm.save(draft, wifiEdits: wifiEdits) }
                 }
+            }
+        }
+        .sheet(isPresented: $showingFirmware) {
+            FirmwareUpdateSheet(deviceName: device.displayName) { binary in
+                await vm.uploadFirmware(binary)
             }
         }
         .overlay { if vm.isRebooting { rebootingOverlay } }
