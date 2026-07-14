@@ -3,6 +3,11 @@ import Foundation
 @MainActor
 final class DeviceListViewModel: ObservableObject {
     @Published private(set) var devices: [KitchenSyncDevice] = []
+
+    /// Why the list looks the way it does. An empty list is only honest when we are actually
+    /// BROWSING — if iOS has denied us the local network, "no devices" is a lie, and the
+    /// device sitting on the bench blinking in time with the session proves it.
+    @Published private(set) var discoveryStatus: DiscoveryStatus = .starting
     @Published private(set) var statuses: [String: KsStatus] = [:]   // keyed by device.id (== host)
 
     /// Whether a device is still answering.
@@ -53,6 +58,9 @@ final class DeviceListViewModel: ObservableObject {
         devices = store.load()
         discovery.onHostnamesChanged = { [weak self] hostnames in
             Task { @MainActor in self?.merge(discovered: hostnames) }
+        }
+        discovery.onStatusChanged = { [weak self] status in
+            Task { @MainActor in self?.discoveryStatus = status }
         }
         discovery.start()
         pollTask = Task {
