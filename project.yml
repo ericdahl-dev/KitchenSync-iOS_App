@@ -45,6 +45,14 @@ targets:
       - path: Tests/KitchenSyncAppTests
     dependencies:
       - target: KitchenSyncApp
+    settings:
+      base:
+        # A test bundle still has to be code-signed, which needs an Info.plist.
+        # Letting Xcode synthesise one is the recommended route — there's nothing
+        # in it worth hand-maintaining.
+        GENERATE_INFOPLIST_FILE: "YES"
+        SWIFT_VERSION: "5.0"
+        SWIFT_STRICT_CONCURRENCY: complete
 
 schemes:
   KitchenSyncApp:
