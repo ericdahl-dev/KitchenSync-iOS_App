@@ -134,6 +134,114 @@ struct KSSwitchStyle: ToggleStyle {
     }
 }
 
+/// `.row`, in its DESKTOP form — label stacked over value.
+///
+/// The web's phone layout flings label and value to opposite edges
+/// (`justify-content:space-between`); its desktop rule stacks them. The desktop
+/// rule is the right one for a phone: a stacked pair is one glance, a label and a
+/// value 300px apart is two.
+struct KSStatCell<Value: View>: View {
+    let label: String
+    @ViewBuilder var value: Value
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text(label)
+                .font(.ksMono(10))
+                .tracking(1.8)
+                .foregroundStyle(KS.mut)
+                .accessibilityHidden(true)
+            value
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 10)
+        .padding(.horizontal, 12)
+        .background(KS.panel.opacity(0.5), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(KS.line))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(label.capitalized)
+    }
+}
+
+/// `.sect` — a 2pt rail with a lime cap. Makes a stack of rows read like a patch bay.
+struct KSSectionRail<Content: View>: View {
+    let title: String
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            ZStack(alignment: .top) {
+                Rectangle().fill(KS.line).frame(width: 2)
+                Rectangle().fill(KS.ledDim).frame(width: 2, height: 28)
+            }
+
+            VStack(alignment: .leading, spacing: 10) {
+                Text(title)
+                    .font(.ksDisplay(12.5, .semibold))
+                    .tracking(1.6)
+                    .foregroundStyle(KS.mut)
+                content
+            }
+        }
+    }
+}
+
+/// A live-editable continuous value.
+///
+/// Debounced at **60ms** — the firmware's own interval (`ks_web.cpp` debounces
+/// number inputs at 60ms before POSTing /live, and the device's /live handler
+/// debounce-writes NVS behind that). Dragging a brightness slider would otherwise
+/// fire a real HTTP POST per frame.
+struct KSLiveSlider: View {
+    let label: String
+    let range: ClosedRange<Int>
+    let value: Int
+    let onCommit: (Int) -> Void
+
+    @State private var local: Double?
+    @State private var debounce: Task<Void, Never>?
+
+    private var shown: Double { local ?? Double(value) }
+
+    var body: some View {
+        KSField(prefix: label) {
+            HStack(spacing: 10) {
+                Slider(
+                    value: Binding(
+                        get: { shown },
+                        set: { new in
+                            local = new
+                            debounce?.cancel()
+                            debounce = Task {
+                                try? await Task.sleep(for: .milliseconds(60))
+                                guard !Task.isCancelled else { return }
+                                onCommit(Int(new.rounded()))
+                            }
+                        }
+                    ),
+                    in: Double(range.lowerBound)...Double(range.upperBound),
+                    step: 5
+                )
+                .tint(KS.led)
+
+                Text("\(Int(shown.rounded()))")
+                    .font(.ksMono(13, .medium))
+                    .monospacedDigit()
+                    .foregroundStyle(KS.ink)
+                    .frame(width: 34, alignment: .trailing)
+            }
+        }
+        // Let the device win once it has answered — never leave a slider showing a
+        // number the device doesn't have.
+        .onChange(of: value) { _, new in
+            if debounce?.isCancelled ?? true { local = nil }
+            _ = new
+        }
+        .accessibilityLabel(label)
+        .accessibilityValue("\(value)")
+    }
+}
+
 /// `.pill` / `.pill.on`.
 struct KSPill: View {
     let text: String
