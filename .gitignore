@@ -15,3 +15,8 @@ DerivedData/
 # macOS
 .DS_Store
 .gstack/
+
+# Xcode derived data when built with -derivedDataPath (e.g. for device installs).
+# .gitignore already had DerivedData/; this is the same thing under another name, and
+# 2121 files of it went in on the previous commit before anyone noticed.
+build/
