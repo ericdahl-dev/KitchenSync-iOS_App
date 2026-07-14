@@ -19,7 +19,7 @@ final class CapabilityConfigTests: XCTestCase {
     /// No metronome, no LED, no follow-beat, one clock output, three WiFi slots.
     static let realTouchConfigJSON = """
     {"clock_out":true,
-     "wifi":[{"ssid":"test123","pass_set":true},{"ssid":"","pass_set":false},{"ssid":"","pass_set":false}],
+     "wifi":[{"ssid":"Bench-2G","pass_set":true},{"ssid":"","pass_set":false},{"ssid":"","pass_set":false}],
      "clock":[{"en":true,"cable":0,"ppqn":24,"phase":0,"swing":0,"follow":false}]}
     """.data(using: .utf8)!
 
@@ -28,7 +28,7 @@ final class CapabilityConfigTests: XCTestCase {
 
         XCTAssertTrue(config.clockOutEnabled)
         XCTAssertEqual(config.wifi.count, 3)
-        XCTAssertEqual(config.wifi[0].ssid, "test123")
+        XCTAssertEqual(config.wifi[0].ssid, "Bench-2G")
         XCTAssertTrue(config.wifi[0].passwordIsSet)
     }
 
