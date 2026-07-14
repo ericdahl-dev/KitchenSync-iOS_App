@@ -7,6 +7,12 @@ final class DeviceDetailViewModel: ObservableObject {
     @Published private(set) var status: KsStatus?
     @Published private(set) var config: KsConfig?
 
+    /// The device is restarting because we asked it to. An EXPECTED disappearance,
+    /// not an error — a user who just pressed WRITE & REBOOT must not be told their
+    /// device fell off the network. Clears the instant `/status` answers again: the
+    /// device coming back is the signal, so there's no timer and no guess.
+    @Published private(set) var isRebooting = false
+
     private let client: KitchenSyncClient
     private let pollInterval: Duration
     private var pollTask: Task<Void, Never>?
@@ -37,7 +43,11 @@ final class DeviceDetailViewModel: ObservableObject {
     }
 
     func refreshStatus() async {
-        status = try? await client.fetchStatus()
+        let fresh = try? await client.fetchStatus()
+        status = fresh
+        // A failed poll while rebooting is the device still being down — which is
+        // exactly what we're waiting out. Only an ANSWER clears the flag.
+        if fresh != nil { isRebooting = false }
     }
 
     /// The device's ACTUAL settings, as opposed to `/status`'s telemetry.
@@ -60,6 +70,11 @@ final class DeviceDetailViewModel: ObservableObject {
     /// The UI must have already warned the user (T-007).
     func save(_ config: KsConfig, wifiEdits: [WifiCredentialEdit]) async {
         try? await client.postSave(config, wifiEdits: wifiEdits)
+        // Optimistic on purpose: the device may well drop the connection mid-reply
+        // as it restarts, so a thrown error here does NOT mean the save failed. Mark
+        // it rebooting either way and let the next successful poll be the truth.
+        isRebooting = true
+        status = nil
     }
 
     /// Quantized Start / immediate Stop. `output: nil` is the master (`out=all`).

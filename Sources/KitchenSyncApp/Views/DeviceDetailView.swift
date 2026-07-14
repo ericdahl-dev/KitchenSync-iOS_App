@@ -15,6 +15,7 @@ struct DeviceDetailView: View {
     let device: KitchenSyncDevice
 
     @StateObject private var vm: DeviceDetailViewModel
+    @State private var showingSettings = false
 
     init(device: KitchenSyncDevice) {
         self.device = device
@@ -48,11 +49,49 @@ struct DeviceDetailView: View {
         .background(KS.bg.ignoresSafeArea())
         .navigationTitle(device.displayName)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button { showingSettings = true } label: { Image(systemName: "gearshape") }
+                    .disabled(vm.config == nil)
+                    .accessibilityLabel("Settings — these reboot the device")
+            }
+        }
+        .sheet(isPresented: $showingSettings) {
+            if let config = vm.config {
+                DeviceSettingsSheet(deviceName: device.displayName, config: config) { draft, wifiEdits in
+                    Task { await vm.save(draft, wifiEdits: wifiEdits) }
+                }
+            }
+        }
+        .overlay { if vm.isRebooting { rebootingOverlay } }
         .task {
             vm.start()
             await vm.loadConfig()
         }
         .onDisappear { vm.stop() }
+    }
+
+    /// An EXPECTED disappearance, not an error. The device is restarting because we
+    /// asked it to. The poll loop keeps running; the instant `/status` answers, this
+    /// clears itself — the device coming back is the signal, so no timer, no guess.
+    private var rebootingOverlay: some View {
+        ZStack {
+            KS.bg.opacity(0.88).ignoresSafeArea()
+            VStack(spacing: 14) {
+                ProgressView().tint(KS.amber)
+                Text("REBOOTING…")
+                    .font(.ksDisplay(15))
+                    .tracking(2)
+                    .foregroundStyle(KS.amberText)
+                Text("The device is restarting and will rejoin the Link session shortly.")
+                    .font(.ksMono(12))
+                    .foregroundStyle(KS.mut)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 40)
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Rebooting. The device is restarting.")
     }
 
     // MARK: Header
