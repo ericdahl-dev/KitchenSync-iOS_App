@@ -52,13 +52,21 @@ final class DeviceListViewModel: ObservableObject {
         store.save(devices.filter(\.addedManually))
     }
 
-    private func merge(discovered hostnames: Set<String>) {
+    /// Internal rather than private so a test can put a DISCOVERED device into the
+    /// list without standing up Bonjour — which is the only way to prove that
+    /// `removeManualDevices(at:)` deletes the right row when the two kinds interleave.
+    func merge(discovered hostnames: Set<String>) {
         for name in hostnames {
             let host = "\(name).local"
             if !devices.contains(where: { $0.host == host }) {
                 devices.append(KitchenSyncDevice(host: host))
             }
         }
+    }
+
+    /// Pull-to-refresh. The poll loop is already running; this just jumps the queue.
+    func refreshNow() async {
+        await refreshAll()
     }
 
     private func refreshAll() async {
