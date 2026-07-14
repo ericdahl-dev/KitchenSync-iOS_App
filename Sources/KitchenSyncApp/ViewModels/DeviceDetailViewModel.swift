@@ -126,11 +126,48 @@ final class DeviceDetailViewModel: ObservableObject {
         }
     }
 
+    /// Why a live edit didn't take. These are kept APART on purpose: the recurring bug
+    /// in this app has been collapsing two situations into one signal and sending the
+    /// user to fix the wrong thing (T-009, T-010, T-016, T-018).
+    enum LiveEditFailure: Equatable {
+        /// HTTP 404 — this firmware has no `/live` route at all. Nothing the user can
+        /// do on this screen fixes it; the way out is an OTA update. Exactly the state
+        /// the Touch was in when NUDGE and SWING "didn't work".
+        case unsupportedByFirmware
+        /// The device answered and refused, or answered with an error. The device is
+        /// right there and talking — this is about the VALUE, not the connection.
+        case rejectedByDevice
+        /// We never got an answer. Say "can't reach it", not "it said no".
+        case unreachable
+    }
+
+    /// Set when a live edit fails; cleared by the next one that succeeds. The view
+    /// shows this — a silent failure is what made the original bug invisible.
+    @Published private(set) var liveEditFailure: LiveEditFailure?
+
     /// Apply one live-safe edit immediately. `KsLiveEdit`'s closed case set is the
     /// ONLY thing that reaches `/live` — reboot-required fields have no case, so
     /// they cannot be routed here even by mistake. They go through `save`.
+    ///
+    /// This used to be `try? await client.postLive(edit)`. The Touch had no `/live`
+    /// route, so every nudge came back 404 and the `try?` dropped it on the floor:
+    /// the stepper moved, no error appeared, and the device never changed. A silent
+    /// failure is worse than a loud one — the user cannot even tell you what broke.
+    ///
+    /// The local config is updated ONLY after the device accepts the edit, so the
+    /// screen never shows a number the device does not have.
     func apply(_ edit: KsLiveEdit) async {
-        try? await client.postLive(edit)
+        do {
+            try await client.postLive(edit)
+            config?.apply(edit)
+            liveEditFailure = nil
+        } catch KitchenSyncClientError.httpStatus(404) {
+            liveEditFailure = .unsupportedByFirmware
+        } catch KitchenSyncClientError.httpStatus {
+            liveEditFailure = .rejectedByDevice
+        } catch {
+            liveEditFailure = .unreachable
+        }
     }
 
     /// The FULL form. Persists to NVS and **reboots the device** — it drops out of

@@ -19,21 +19,21 @@ final class KsConfigDecodingTests: XCTestCase {
     func test_decodes_top_level_fields() throws {
         let config = try JSONDecoder().decode(KsConfig.self, from: Data(sampleConfigJSON.utf8))
         XCTAssertTrue(config.clockOutEnabled)
-        XCTAssertFalse(config.metronomeEnabled)
-        XCTAssertTrue(config.metronomeAccent)
-        XCTAssertEqual(config.metronomeVolume, 80)
-        XCTAssertEqual(config.metronomeVoice, 0)
-        XCTAssertFalse(config.ledEnabled)
-        XCTAssertEqual(config.ledBrightness, 60)
-        XCTAssertEqual(config.ledMode, 0)
-        XCTAssertEqual(config.ledFade, 55)
-        XCTAssertFalse(config.followBeatEnabled)
+        XCTAssertEqual(config.metronome?.enabled, false)
+        XCTAssertEqual(config.metronome?.accent, true)
+        XCTAssertEqual(config.metronome?.volume, 80)
+        XCTAssertEqual(config.metronome?.voice, 0)
+        XCTAssertEqual(config.led?.enabled, false)
+        XCTAssertEqual(config.led?.brightness, 60)
+        XCTAssertEqual(config.led?.mode, 0)
+        XCTAssertEqual(config.led?.fade, 55)
+        XCTAssertEqual(config.followBeatEnabled, false)
     }
 
     func test_decodes_hash_prefixed_hex_colors() throws {
         let config = try JSONDecoder().decode(KsConfig.self, from: Data(sampleConfigJSON.utf8))
-        XCTAssertEqual(config.ledBeatColor, 0x00B400)
-        XCTAssertEqual(config.ledAccentColor, 0xDC6E00)
+        XCTAssertEqual(config.led?.beatColor, 0x00B400)
+        XCTAssertEqual(config.led?.accentColor, 0xDC6E00)
     }
 
     func test_decodes_wifi_slots_in_order_without_ever_seeing_a_password() throws {
@@ -99,7 +99,7 @@ final class KsConfigSaveFormFieldsTests: XCTestCase {
     func test_per_output_fields_present_for_all_four_outputs() throws {
         let config = try JSONDecoder().decode(KsConfig.self, from: Data(sampleConfigJSON.utf8))
         let fields = config.saveFormFields(wifiEdits: [])
-        for index in 0..<KsConfig.outputCount {
+        for index in 0..<KsConfig.maxOutputCount {
             XCTAssertNotNil(fields["clk\(index)_en"])
             XCTAssertNotNil(fields["clk\(index)_cable"])
             XCTAssertNotNil(fields["clk\(index)_ppqn"])

@@ -96,7 +96,7 @@ final class DeviceDetailViewModelTests: XCTestCase {
 
         await vm.loadConfig()
 
-        XCTAssertEqual(vm.config?.ledBrightness, 60)
+        XCTAssertEqual(vm.config?.led?.brightness, 60)
         XCTAssertEqual(vm.config?.wifi.first?.ssid, "TestNet")
         // The password is never on the wire, so it can never be in the model.
         XCTAssertEqual(vm.config?.wifi.first?.passwordIsSet, true)

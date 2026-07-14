@@ -47,7 +47,7 @@ struct KsStatus: Decodable, Equatable {
     var followBeatConfidence: Double
     var followBeatValid: Bool
 
-    /// One state per clock output (`KsConfig.outputCount` == 4).
+    /// One state per clock output (`KsConfig.maxOutputCount` == 4).
     var launch: [TransportLaunchState]
     var playing: Bool
     var linkOwnsTransport: Bool

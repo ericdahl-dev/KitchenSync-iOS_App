@@ -42,22 +42,48 @@ struct WifiSlot: Decodable, Equatable {
 /// mirror the `POST /save` / `POST /live` form grammar 1:1
 /// (`ks_config_set()` in `ks_config.c`); `saveFormFields()` below is the
 /// encode-side mirror of this decode.
+/// The metronome, when a speaker is actually fitted. `nil` on a device without one —
+/// and `nil` is NOT the same statement as "a metronome that is switched off".
+struct MetronomeConfig: Equatable {
+    var enabled: Bool
+    var accent: Bool
+    var volume: Int      // 0...100
+    var voice: Int       // 0=Tone 1=Click 2=Wood
+}
+
+/// The LED strip, when one is actually wired. `nil` on a device without one.
+struct LedConfig: Equatable {
+    var enabled: Bool
+    var brightness: Int   // 0...100
+    var mode: Int         // 0=chase 1=flash 2=fill
+    var fade: Int         // 0...100
+    var beatColor: UInt32     // 0xRRGGBB
+    var accentColor: UInt32
+}
+
 struct KsConfig: Decodable, Equatable {
-    static let outputCount = 4     // KS_CLOCK_OUTPUTS
-    static let wifiSlotCount = 3   // KS_WIFI_SLOTS
+    /// The MAXIMUM a device can have, not an assumption about any given one — the real
+    /// count is `clock.count`, which the firmware sets to what is actually FITTED
+    /// (`link-devices` ESP-030). One DIN jack on a Touch, four on a P4.
+    static let maxOutputCount = 4   // KS_CLOCK_OUTPUTS
+    static let wifiSlotCount = 3    // KS_WIFI_SLOTS
 
     var clockOutEnabled: Bool
-    var metronomeEnabled: Bool
-    var metronomeAccent: Bool
-    var metronomeVolume: Int        // 0...100
-    var metronomeVoice: Int         // 0=Tone 1=Click 2=Wood
-    var ledEnabled: Bool
-    var ledBrightness: Int          // 0...100
-    var ledMode: Int                // 0=chase 1=flash 2=fill
-    var ledFade: Int                // 0...100
-    var ledBeatColor: UInt32        // 0xRRGGBB
-    var ledAccentColor: UInt32
-    var followBeatEnabled: Bool
+
+    /// **`nil` means the hardware ISN'T FITTED — not that it's switched off.**
+    ///
+    /// A device must not report hardware it doesn't have, so absent hardware is absent
+    /// from `/config.json` entirely (`link-devices` ESP-030). `metronome: false` would
+    /// claim "there is a speaker and it's off", which on a Touch is simply untrue — and
+    /// this app would draw a volume slider for a speaker that doesn't exist.
+    ///
+    /// Capability is a property of the BUILD, not the product: solder a strip onto a
+    /// Touch, flip one firmware flag, and `led` starts arriving — and the LED section
+    /// appears here with no change to this app.
+    var metronome: MetronomeConfig?
+    var led: LedConfig?
+    var followBeatEnabled: Bool?
+
     var wifi: [WifiSlot]
     var clock: [ClockOutputConfig]
 
@@ -73,19 +99,37 @@ struct KsConfig: Decodable, Equatable {
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         clockOutEnabled = try c.decode(Bool.self, forKey: .clockOutEnabled)
-        metronomeEnabled = try c.decode(Bool.self, forKey: .metronomeEnabled)
-        metronomeAccent = try c.decode(Bool.self, forKey: .metronomeAccent)
-        metronomeVolume = try c.decode(Int.self, forKey: .metronomeVolume)
-        metronomeVoice = try c.decode(Int.self, forKey: .metronomeVoice)
-        ledEnabled = try c.decode(Bool.self, forKey: .ledEnabled)
-        ledBrightness = try c.decode(Int.self, forKey: .ledBrightness)
-        ledMode = try c.decode(Int.self, forKey: .ledMode)
-        ledFade = try c.decode(Int.self, forKey: .ledFade)
-        let beatColorString = try c.decode(String.self, forKey: .ledBeatColor)
-        ledBeatColor = try Self.parseHexColor(beatColorString, forKey: .ledBeatColor, in: c)
-        let accentColorString = try c.decode(String.self, forKey: .ledAccentColor)
-        ledAccentColor = try Self.parseHexColor(accentColorString, forKey: .ledAccentColor, in: c)
-        followBeatEnabled = try c.decode(Bool.self, forKey: .followBeatEnabled)
+
+        // The presence of the ENABLE key is what says the hardware is fitted. Once it's
+        // there, the rest of its group must be too — a half-reported metronome is a
+        // firmware bug, and decoding it into defaults would hide that.
+        if let enabled = try c.decodeIfPresent(Bool.self, forKey: .metronomeEnabled) {
+            metronome = MetronomeConfig(
+                enabled: enabled,
+                accent: try c.decode(Bool.self, forKey: .metronomeAccent),
+                volume: try c.decode(Int.self, forKey: .metronomeVolume),
+                voice: try c.decode(Int.self, forKey: .metronomeVoice)
+            )
+        } else {
+            metronome = nil
+        }
+
+        if let enabled = try c.decodeIfPresent(Bool.self, forKey: .ledEnabled) {
+            let beat = try c.decode(String.self, forKey: .ledBeatColor)
+            let accent = try c.decode(String.self, forKey: .ledAccentColor)
+            led = LedConfig(
+                enabled: enabled,
+                brightness: try c.decode(Int.self, forKey: .ledBrightness),
+                mode: try c.decode(Int.self, forKey: .ledMode),
+                fade: try c.decode(Int.self, forKey: .ledFade),
+                beatColor: try Self.parseHexColor(beat, forKey: .ledBeatColor, in: c),
+                accentColor: try Self.parseHexColor(accent, forKey: .ledAccentColor, in: c)
+            )
+        } else {
+            led = nil
+        }
+
+        followBeatEnabled = try c.decodeIfPresent(Bool.self, forKey: .followBeatEnabled)
         wifi = try c.decode([WifiSlot].self, forKey: .wifi)
         clock = try c.decode([ClockOutputConfig].self, forKey: .clock)
     }
@@ -166,18 +210,30 @@ extension KsConfig {
     func saveFormFields(wifiEdits: [WifiCredentialEdit]) -> [String: String] {
         var fields: [String: String] = [
             "clock_out": Self.boolField(clockOutEnabled),
-            "metronome": Self.boolField(metronomeEnabled),
-            "metro_accent": Self.boolField(metronomeAccent),
-            "metro_vol": String(metronomeVolume),
-            "metro_voice": String(metronomeVoice),
-            "led": Self.boolField(ledEnabled),
-            "led_bright": String(ledBrightness),
-            "led_mode": String(ledMode),
-            "led_fade": String(ledFade),
-            "led_beat": Self.colorField(ledBeatColor),
-            "led_accent": Self.colorField(ledAccentColor),
-            "follow_beat": Self.boolField(followBeatEnabled),
         ]
+
+        // Only send what the device HAS. Posting `metronome=0` to a board with no speaker
+        // would be writing a setting for hardware that isn't there — and, worse, this app
+        // would have had to invent a value for it, which is exactly the fabricated-defaults
+        // clobbering that `/config.json` exists to prevent. Absent stays absent, in both
+        // directions.
+        if let m = metronome {
+            fields["metronome"] = Self.boolField(m.enabled)
+            fields["metro_accent"] = Self.boolField(m.accent)
+            fields["metro_vol"] = String(m.volume)
+            fields["metro_voice"] = String(m.voice)
+        }
+        if let l = led {
+            fields["led"] = Self.boolField(l.enabled)
+            fields["led_bright"] = String(l.brightness)
+            fields["led_mode"] = String(l.mode)
+            fields["led_fade"] = String(l.fade)
+            fields["led_beat"] = Self.colorField(l.beatColor)
+            fields["led_accent"] = Self.colorField(l.accentColor)
+        }
+        if let followBeatEnabled {
+            fields["follow_beat"] = Self.boolField(followBeatEnabled)
+        }
         // Keyed by `edit.id` (the slot number), not array position — a caller
         // that filters or reorders `wifiEdits` must not silently relabel which
         // saved network gets touched.
@@ -203,6 +259,47 @@ extension KsConfig {
 
     fileprivate static func colorField(_ value: UInt32) -> String {
         String(format: "#%06X", value & 0xFFFFFF)
+    }
+
+    /// Fold one ACCEPTED live edit into the local config, mirroring what `/live` just
+    /// did on the device. Call this ONLY after the POST returned 2xx: this is not an
+    /// optimistic guess, it is bookkeeping for a change that already happened.
+    ///
+    /// Without it a working `/live` still LOOKS broken — the POST succeeds, the device
+    /// obeys, and the number on screen never moves, because `/config.json` is only
+    /// re-fetched on demand.
+    ///
+    /// A capability that isn't fitted (`metronome == nil`, `led == nil`) stays nil. An
+    /// edit can't bring hardware into existence, and an index past the outputs this
+    /// device actually has is dropped rather than grown into — the array's length IS
+    /// the output count (ESP-030), so appending to it would invent a jack.
+    mutating func apply(_ edit: KsLiveEdit) {
+        switch edit {
+        case .clockOutEnabled(let v): clockOutEnabled = v
+
+        case .metronomeAccent(let v): metronome?.accent = v
+        case .metronomeVolume(let v): metronome?.volume = v
+        case .metronomeVoice(let v):  metronome?.voice = v
+
+        case .ledEnabled(let v):      led?.enabled = v
+        case .ledBrightness(let v):   led?.brightness = v
+        case .ledMode(let v):         led?.mode = v
+        case .ledFade(let v):         led?.fade = v
+        case .ledBeatColor(let v):    led?.beatColor = v
+        case .ledAccentColor(let v):  led?.accentColor = v
+
+        case .outputEnabled(let i, let v):      withOutput(i) { $0.enabled = v }
+        case .outputCable(let i, let v):        withOutput(i) { $0.cable = v }
+        case .outputPPQN(let i, let v):         withOutput(i) { $0.ppqn = v }
+        case .outputPhase(let i, let v):        withOutput(i) { $0.phaseMilliBeats = v }
+        case .outputSwing(let i, let v):        withOutput(i) { $0.swingMilliBeats = v }
+        case .outputFollowsLink(let i, let v):  withOutput(i) { $0.followsLinkTransport = v }
+        }
+    }
+
+    private mutating func withOutput(_ index: Int, _ change: (inout ClockOutputConfig) -> Void) {
+        guard clock.indices.contains(index) else { return }
+        change(&clock[index])
     }
 }
 

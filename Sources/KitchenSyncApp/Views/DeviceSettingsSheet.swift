@@ -47,8 +47,14 @@ struct DeviceSettingsSheet: View {
                     // first "for the phone setup flow" — but if you're in this sheet,
                     // discovery already found the device. WiFi is the least likely thing
                     // you're changing and by far the most dangerous to fat-finger. Last.
-                    metronome
-                    followBeat
+                    //
+                    // These sections appear ONLY if the device reports the hardware. A board
+                    // with no speaker doesn't get a metronome toggle — drawing one for
+                    // hardware that isn't fitted is how a UI lies. Solder a strip onto a
+                    // Touch and flip one FIRMWARE flag, and the section shows up here with
+                    // no change to this app at all.
+                    if draft.metronome != nil { metronome }
+                    if draft.followBeatEnabled != nil { followBeat }
                     wifi
 
                     writeAndReboot
@@ -107,7 +113,11 @@ struct DeviceSettingsSheet: View {
                 label: "enable",
                 key: "metronome",
                 caption: "The audio codec only starts at boot, so this cannot be applied live. Volume, voice and accent CAN — they're on the device screen.",
-                isOn: Binding(get: { draft.metronomeEnabled }, set: { draft.metronomeEnabled = $0 })
+                // Only rendered when `draft.metronome != nil`, so the device HAS a speaker.
+                isOn: Binding(
+                    get: { draft.metronome?.enabled ?? false },
+                    set: { draft.metronome?.enabled = $0 }
+                )
             )
         }
     }
@@ -118,7 +128,10 @@ struct DeviceSettingsSheet: View {
                 label: "enable",
                 key: "follow_beat",
                 caption: "Listens to the room and follows the beat it hears.",
-                isOn: Binding(get: { draft.followBeatEnabled }, set: { draft.followBeatEnabled = $0 })
+                isOn: Binding(
+                    get: { draft.followBeatEnabled ?? false },
+                    set: { draft.followBeatEnabled = $0 }
+                )
             )
         }
     }
