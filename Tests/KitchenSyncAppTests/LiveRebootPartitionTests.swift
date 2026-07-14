@@ -34,7 +34,7 @@ final class LiveRebootPartitionTests: XCTestCase {
         .ledFade(50),
         .ledBeatColor(0x00FF00),
         .ledAccentColor(0xFF0000),
-    ] + (0..<KsConfig.outputCount).flatMap { i -> [KsLiveEdit] in
+    ] + (0..<KsConfig.maxOutputCount).flatMap { i -> [KsLiveEdit] in
         [
             .outputEnabled(index: i, true),
             .outputCable(index: i, 0),
