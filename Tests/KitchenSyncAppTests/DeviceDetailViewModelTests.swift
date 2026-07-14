@@ -228,6 +228,48 @@ final class DeviceDetailViewModelTests: XCTestCase {
         XCTAssertNil(vm.status)
     }
 
+    // MARK: OTA (T-008)
+
+    /// The binary goes up as a RAW body — no multipart. The firmware streams it
+    /// straight into the inactive OTA slot.
+    func test_firmware_upload_posts_the_raw_binary_to_update() async {
+        StubURLProtocol.routes["POST /update"] = .init()
+        let vm = makeVM()
+        let binary = Data([0xE9, 0x01, 0x02, 0x03, 0xFF])
+
+        await vm.uploadFirmware(binary)
+
+        let req = StubURLProtocol.requests[0]
+        XCTAssertEqual(req.method, "POST")
+        XCTAssertEqual(req.url.path, "/update")
+        XCTAssertEqual(req.body, binary, "the body is the .bin itself, not a multipart envelope")
+    }
+
+    /// A successful flash reboots the device into the new slot — the same expected
+    /// disappearance as a /save, and it must read the same way.
+    func test_a_successful_flash_marks_the_device_as_rebooting() async {
+        StubURLProtocol.routes["POST /update"] = .init()
+        let vm = makeVM()
+
+        let ok = await vm.uploadFirmware(Data([0x01]))
+
+        XCTAssertTrue(ok)
+        XCTAssertTrue(vm.isRebooting)
+    }
+
+    /// A FAILED flash must not claim the device is rebooting. Dual-slot OTA means the
+    /// device is still happily running its old firmware — saying "rebooting" would
+    /// send the user waiting for a restart that is never coming.
+    func test_a_failed_flash_does_not_claim_the_device_is_rebooting() async {
+        StubURLProtocol.routes["POST /update"] = .init(status: 500, body: Data())
+        let vm = makeVM()
+
+        let ok = await vm.uploadFirmware(Data([0x01]))
+
+        XCTAssertFalse(ok)
+        XCTAssertFalse(vm.isRebooting, "a failed flash leaves the device on its old firmware, running")
+    }
+
     // MARK: The poll loop
 
     private func makePollingVM() -> DeviceDetailViewModel {
