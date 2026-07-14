@@ -16,6 +16,13 @@ final class DeviceListViewModel: ObservableObject {
     enum Reachability: Equatable {
         case reachable
         case unreachable
+        /// It ANSWERS — we just can't decode what it says. Emphatically not "gone".
+        ///
+        /// Found on real hardware: a KitchenSync Touch replies to every poll with HTTP 200 in a
+        /// `/status` dialect this app can't read (`link-devices` ESP-029). Counting those as
+        /// polling misses declared a live, healthy device dead and sent the user off to debug a
+        /// network that was working perfectly. A device that keeps answering is never unreachable.
+        case unsupported
     }
 
     private static let missesBeforeUnreachable = 3
@@ -25,6 +32,9 @@ final class DeviceListViewModel: ObservableObject {
     private let session: URLSession
     private var pollTask: Task<Void, Never>?
     private var consecutiveMisses: [String: Int] = [:]
+    /// Devices that ANSWER but whose `/status` we can't decode. Kept apart from the miss counter
+    /// on purpose — they are present, not absent.
+    private var undecodable: Set<String> = []
 
     init(store: ManualDeviceStore = ManualDeviceStore(), session: URLSession = .shared) {
         self.store = store
@@ -32,7 +42,10 @@ final class DeviceListViewModel: ObservableObject {
     }
 
     func reachability(of id: String) -> Reachability {
-        (consecutiveMisses[id] ?? 0) >= Self.missesBeforeUnreachable ? .unreachable : .reachable
+        // Answering-but-undecodable outranks the miss counter: a device that is plainly THERE
+        // must never be reported as gone, however long we've failed to read it.
+        if undecodable.contains(id) { return .unsupported }
+        return (consecutiveMisses[id] ?? 0) >= Self.missesBeforeUnreachable ? .unreachable : .reachable
     }
 
     func start() {
@@ -91,22 +104,45 @@ final class DeviceListViewModel: ObservableObject {
         await refreshAll()
     }
 
+    /// The outcome of one poll. A DECODE failure and a TRANSPORT failure are different problems
+    /// with different fixes; collapsing them into `nil` is what let a live device be reported dead.
+    private enum PollResult {
+        case ok(KsStatus)
+        case undecodable      // it answered; we can't read it
+        case noAnswer         // it didn't answer
+    }
+
     private func refreshAll() async {
         let snapshot = devices
         let session = session
-        await withTaskGroup(of: (String, KsStatus?).self) { group in
+        await withTaskGroup(of: (String, PollResult).self) { group in
             for device in snapshot {
                 group.addTask {
                     let client = KitchenSyncClient(host: device.host, session: session)
-                    let status = try? await client.fetchStatus()
-                    return (device.id, status)
+                    do {
+                        return (device.id, .ok(try await client.fetchStatus()))
+                    } catch is DecodingError {
+                        return (device.id, .undecodable)
+                    } catch {
+                        return (device.id, .noAnswer)
+                    }
                 }
             }
-            for await (id, status) in group {
-                if let status {
+            for await (id, result) in group {
+                switch result {
+                case .ok(let status):
                     statuses[id] = status
                     consecutiveMisses[id] = 0
-                } else {
+                    undecodable.remove(id)
+
+                case .undecodable:
+                    // It is THERE. Not a miss — don't let the counter creep toward "gone".
+                    undecodable.insert(id)
+                    consecutiveMisses[id] = 0
+                    statuses[id] = nil
+
+                case .noAnswer:
+                    undecodable.remove(id)
                     let misses = (consecutiveMisses[id] ?? 0) + 1
                     consecutiveMisses[id] = misses
                     // Below the threshold the last known status is still the best we
