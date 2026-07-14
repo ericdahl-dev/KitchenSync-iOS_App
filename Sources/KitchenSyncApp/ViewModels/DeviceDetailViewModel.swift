@@ -61,9 +61,23 @@ final class DeviceDetailViewModel: ObservableObject {
 
     @Published private(set) var statusAvailability: StatusAvailability = .unknown
 
+    /// Whether the clock task is faulting RIGHT NOW — a rate, not a lifetime total.
+    ///
+    /// The tick counters are lifetime, so `droppedTicks > 0` lights forever on a device that
+    /// dropped a tick at boot and has been perfect since. Seen on real hardware: `drop:47`, static
+    /// for the whole session. Only a rising counter is news. See `ClockFault`.
+    @Published private(set) var clockFault: ClockFault = .none
+
+    /// The previous poll's tick health — the other half of a rate.
+    private var lastTick: TickHealth?
+
     func refreshStatus() async {
         do {
             let fresh = try await client.fetchStatus()
+            if let tick = fresh.tickHealth {
+                clockFault = .between(previous: lastTick, current: tick)
+                lastTick = tick
+            }
             status = fresh
             statusAvailability = .available
             isRebooting = false     // the device answering IS the signal
