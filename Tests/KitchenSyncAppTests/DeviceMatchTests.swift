@@ -47,4 +47,21 @@ final class DeviceMatchTests: XCTestCase {
                                                  txt: ["dev": "some-other-product"]),
                        "a TXT record that says it ISN'T ours must beat a hostname that says it is")
     }
+
+    /// ESP-035: the headless X32Link. It was the last unit in the fleet with NO mDNS at
+    /// all -- it never advertised, so it could not be found no matter what this matcher
+    /// did. Now it announces `x32link-<mac>`, and the prefix list has to know the name.
+    ///
+    /// The user hit this exactly: "I see kstouch. not the headless." The device was
+    /// powered, on the network, and following the Link session.
+    func test_the_headless_x32link_is_one_of_ours() {
+        XCTAssertTrue(DeviceMatch.isKitchenSync(serviceName: "x32link-7a1c", txt: nil))
+    }
+
+    /// The prefix is still a HEURISTIC, and it must not swallow the whole network. A
+    /// stranger's box at a venue is not ours.
+    func test_a_stranger_is_still_not_one_of_ours() {
+        XCTAssertFalse(DeviceMatch.isKitchenSync(serviceName: "brother-printer", txt: nil))
+        XCTAssertFalse(DeviceMatch.isKitchenSync(serviceName: "x32-mixer", txt: nil))
+    }
 }
