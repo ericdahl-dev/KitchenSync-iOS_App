@@ -1,0 +1,23 @@
+{
+  "/Users/edahl/Documents/GitHub/KitchenSync-iOS_App/Sources/KitchenSyncApp/Discovery/DeviceMatch.swift" : {
+    "const-values" : "/Users/edahl/Documents/GitHub/KitchenSync-iOS_App/build/dd/Build/Intermediates.noindex/KitchenSyncApp.build/Debug-iphoneos/KitchenSyncApp.build/Objects-normal/arm64/DeviceMatch.swiftconstvalues",
+    "dependencies" : "/Users/edahl/Documents/GitHub/KitchenSync-iOS_App/build/dd/Build/Intermediates.noindex/KitchenSyncApp.build/Debug-iphoneos/KitchenSyncApp.build/Objects-normal/arm64/DeviceMatch.d",
+    "diagnostics" : "/Users/edahl/Documents/GitHub/KitchenSync-iOS_App/build/dd/Build/Intermediates.noindex/KitchenSyncApp.build/Debug-iphoneos/KitchenSyncApp.build/Objects-normal/arm64/DeviceMatch.dia",
+    "object" : "/Users/edahl/Documents/GitHub/KitchenSync-iOS_App/build/dd/Build/Intermediates.noindex/KitchenSyncApp.build/Debug-iphoneos/KitchenSyncApp.build/Objects-normal/arm64/DeviceMatch.o",
+    "swift-dependencies" : "/Users/edahl/Documents/GitHub/KitchenSync-iOS_App/build/dd/Build/Intermediates.noindex/KitchenSyncApp.build/Debug-iphoneos/KitchenSyncApp.build/Objects-normal/arm64/DeviceMatch.swiftdeps"
+  },
+  "/Users/edahl/Documents/GitHub/KitchenSync-iOS_App/Sources/KitchenSyncApp/Views/DeviceSettingsSheet.swift" : {
+    "const-values" : "/Users/edahl/Documents/GitHub/KitchenSync-iOS_App/build/dd/Build/Intermediates.noindex/KitchenSyncApp.build/Debug-iphoneos/KitchenSyncApp.build/Objects-normal/arm64/DeviceSettingsSheet.swiftconstvalues",
+    "dependencies" : "/Users/edahl/Documents/GitHub/KitchenSync-iOS_App/build/dd/Build/Intermediates.noindex/KitchenSyncApp.build/Debug-iphoneos/KitchenSyncApp.build/Objects-normal/arm64/DeviceSettingsSheet.d",
+    "diagnostics" : "/Users/edahl/Documents/GitHub/KitchenSync-iOS_App/build/dd/Build/Intermediates.noindex/KitchenSyncApp.build/Debug-iphoneos/KitchenSyncApp.build/Objects-normal/arm64/DeviceSettingsSheet.dia",
+    "object" : "/Users/edahl/Documents/GitHub/KitchenSync-iOS_App/build/dd/Build/Intermediates.noindex/KitchenSyncApp.build/Debug-iphoneos/KitchenSyncApp.build/Objects-normal/arm64/DeviceSettingsSheet.o",
+    "swift-dependencies" : "/Users/edahl/Documents/GitHub/KitchenSync-iOS_App/build/dd/Build/Intermediates.noindex/KitchenSyncApp.build/Debug-iphoneos/KitchenSyncApp.build/Objects-normal/arm64/DeviceSettingsSheet.swiftdeps"
+  },
+  "/Users/edahl/Documents/GitHub/KitchenSync-iOS_App/Sources/KitchenSyncApp/Views/FirmwareUpdateSheet.swift" : {
+    "const-values" : "/Users/edahl/Documents/GitHub/KitchenSync-iOS_App/build/dd/Build/Intermediates.noindex/KitchenSyncApp.build/Debug-iphoneos/KitchenSyncApp.build/Objects-normal/arm64/FirmwareUpdateSheet.swiftconstvalues",
+    "dependencies" : "/Users/edahl/Documents/GitHub/KitchenSync-iOS_App/build/dd/Build/Intermediates.noindex/KitchenSyncApp.build/Debug-iphoneos/KitchenSyncApp.build/Objects-normal/arm64/FirmwareUpdateSheet.d",
+    "diagnostics" : "/Users/edahl/Documents/GitHub/KitchenSync-iOS_App/build/dd/Build/Intermediates.noindex/KitchenSyncApp.build/Debug-iphoneos/KitchenSyncApp.build/Objects-normal/arm64/FirmwareUpdateSheet.dia",
+    "object" : "/Users/edahl/Documents/GitHub/KitchenSync-iOS_App/build/dd/Build/Intermediates.noindex/KitchenSyncApp.build/Debug-iphoneos/KitchenSyncApp.build/Objects-normal/arm64/FirmwareUpdateSheet.o",
+    "swift-dependencies" : "/Users/edahl/Documents/GitHub/KitchenSync-iOS_App/build/dd/Build/Intermediates.noindex/KitchenSyncApp.build/Debug-iphoneos/KitchenSyncApp.build/Objects-normal/arm64/FirmwareUpdateSheet.swiftdeps"
+  }
+}
