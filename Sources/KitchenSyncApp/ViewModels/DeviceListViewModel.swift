@@ -5,12 +5,34 @@ final class DeviceListViewModel: ObservableObject {
     @Published private(set) var devices: [KitchenSyncDevice] = []
     @Published private(set) var statuses: [String: KsStatus] = [:]   // keyed by device.id (== host)
 
+    /// Whether a device is still answering.
+    ///
+    /// NOT a bare "did the last poll succeed". At a 2s poll, one dropped request on a
+    /// busy LAN is noise, and flapping a red badge on every missed packet would be
+    /// worse than saying nothing. A device goes unreachable only after
+    /// `missesBeforeUnreachable` CONSECUTIVE failures; any single success resets the
+    /// count, because three misses spread across a flaky hour with successes between
+    /// them is a working device, not a dead one.
+    enum Reachability: Equatable {
+        case reachable
+        case unreachable
+    }
+
+    private static let missesBeforeUnreachable = 3
+
     private let discovery = KitchenSyncDiscovery()
     private let store: ManualDeviceStore
+    private let session: URLSession
     private var pollTask: Task<Void, Never>?
+    private var consecutiveMisses: [String: Int] = [:]
 
-    init(store: ManualDeviceStore = ManualDeviceStore()) {
+    init(store: ManualDeviceStore = ManualDeviceStore(), session: URLSession = .shared) {
         self.store = store
+        self.session = session
+    }
+
+    func reachability(of id: String) -> Reachability {
+        (consecutiveMisses[id] ?? 0) >= Self.missesBeforeUnreachable ? .unreachable : .reachable
     }
 
     func start() {
@@ -71,10 +93,11 @@ final class DeviceListViewModel: ObservableObject {
 
     private func refreshAll() async {
         let snapshot = devices
+        let session = session
         await withTaskGroup(of: (String, KsStatus?).self) { group in
             for device in snapshot {
                 group.addTask {
-                    let client = KitchenSyncClient(host: device.host)
+                    let client = KitchenSyncClient(host: device.host, session: session)
                     let status = try? await client.fetchStatus()
                     return (device.id, status)
                 }
@@ -82,6 +105,17 @@ final class DeviceListViewModel: ObservableObject {
             for await (id, status) in group {
                 if let status {
                     statuses[id] = status
+                    consecutiveMisses[id] = 0
+                } else {
+                    let misses = (consecutiveMisses[id] ?? 0) + 1
+                    consecutiveMisses[id] = misses
+                    // Below the threshold the last known status is still the best we
+                    // have, so keep showing it. Past the threshold it is no longer a
+                    // measurement, it's a fossil — a device that is gone must not still
+                    // be reporting 128 bpm.
+                    if misses >= Self.missesBeforeUnreachable {
+                        statuses[id] = nil
+                    }
                 }
             }
         }
