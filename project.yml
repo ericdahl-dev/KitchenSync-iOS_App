@@ -32,6 +32,12 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.ericdahl.kitchensync
+        # Signing for on-device runs. Xcode manages the profile; this just names the team.
+        # NOTE: on a real phone iOS will PROMPT for Local Network access on first launch.
+        # Deny it and the app sees nothing at all — Bonjour browsing and `.local`
+        # resolution both die silently, with no error to go on.
+        DEVELOPMENT_TEAM: 5HR8E5CWR7
+        CODE_SIGN_STYLE: Automatic
         SWIFT_VERSION: "5.0"
         TARGETED_DEVICE_FAMILY: "1,2"
         MARKETING_VERSION: "0.1.0"
