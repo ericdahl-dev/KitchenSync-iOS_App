@@ -412,11 +412,26 @@ struct DeviceDetailView: View {
             DisclosureGroup {
                 VStack(spacing: 6) {
                     if let t = vm.status?.tickHealth {
-                        DiagRow("dropped ticks", "\(t.droppedTicks)", warn: t.droppedTicks > 0)
+                        // These are LIFETIME totals — the firmware says so. A non-zero value means
+                        // "this happened at some point", usually at boot, and colouring it amber
+                        // forever is how a real, healthy device ends up permanently flagged. The
+                        // number is still worth SHOWING; it just isn't an alarm. Only a counter
+                        // that is MOVING right now warns (see `hasDiagWarning`).
+                        DiagRow("dropped ticks", "\(t.droppedTicks) since boot",
+                                warn: vm.clockFault == .droppingNow)
                         DiagRow("bursts", "\(t.bursts)")
                         DiagRow("max gap µs", "\(t.maxGapMicros)")
                         DiagRow("max work µs", "\(t.maxWorkMicros)")
-                        DiagRow("overruns", "\(t.overruns)", warn: t.overruns > 0)
+                        DiagRow("overruns", "\(t.overruns) since boot",
+                                warn: vm.clockFault == .droppingNow)
+
+                        if vm.clockFault == .droppingNow {
+                            Text("The clock task is dropping ticks RIGHT NOW.")
+                                .font(.ksMono(11))
+                                .foregroundStyle(KS.amberText)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.top, 2)
+                        }
                     }
                     if let p = vm.status?.phaseHealth {
                         // maxStepMicros is the number that, unread, cost 138 seconds of
@@ -448,11 +463,14 @@ struct DeviceDetailView: View {
         }
     }
 
-    /// Only unambiguous signals. A dropped tick or an overrun is a fault by
-    /// definition — no threshold needed, and none invented.
+    /// A RATE, not a lifetime total.
+    ///
+    /// This used to be `droppedTicks > 0`. But those are LIFETIME counters, so a real device that
+    /// dropped 47 ticks at boot and has been flawless since lit an amber warning **forever** — and
+    /// a warning that is always on is one nobody reads, which makes it worthless on the day it
+    /// matters. Only a counter that MOVES between polls is news. See `ClockFault`.
     private var hasDiagWarning: Bool {
-        guard let t = vm.status?.tickHealth else { return false }
-        return t.droppedTicks > 0 || t.overruns > 0
+        vm.clockFault == .droppingNow
     }
 }
 
