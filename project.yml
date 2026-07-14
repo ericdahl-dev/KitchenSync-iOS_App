@@ -1,0 +1,44 @@
+name: KitchenSyncApp
+options:
+  bundleIdPrefix: dev.ericdahl
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+
+targets:
+  KitchenSyncApp:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources/KitchenSyncApp
+    info:
+      path: Sources/KitchenSyncApp/Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.ericdahl.kitchensync
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_STRICT_CONCURRENCY: complete
+
+  KitchenSyncAppTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests/KitchenSyncAppTests
+    dependencies:
+      - target: KitchenSyncApp
+
+schemes:
+  KitchenSyncApp:
+    build:
+      targets:
+        KitchenSyncApp: all
+        KitchenSyncAppTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - KitchenSyncAppTests
