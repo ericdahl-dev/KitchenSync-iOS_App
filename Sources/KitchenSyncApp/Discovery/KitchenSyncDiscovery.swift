@@ -32,11 +32,14 @@ final class KitchenSyncDiscovery {
         parameters.includePeerToPeer = false
         let browser = NWBrowser(for: .bonjour(type: "_http._tcp", domain: nil), using: parameters)
         browser.browseResultsChangedHandler = { [weak self] results, _ in
-            let names = results.compactMap { result -> String? in
+            let matched = results.compactMap { result -> String? in
                 guard case let .service(name, _, _, _) = result.endpoint else { return nil }
-                return name
+                // The decision lives in `DeviceMatch` — a pure function with tests. This glue
+                // only extracts the two inputs. TXT wins when present; the hostname is the
+                // fallback for units that haven't been reflashed (see `DeviceMatch`).
+                return DeviceMatch.isKitchenSync(serviceName: name, txt: Self.txt(of: result))
+                    ? name : nil
             }
-            let matched = names.filter { $0 == "kitchensync" || $0.hasPrefix("kitchensync-") }
             self?.onHostnamesChanged?(Set(matched))
         }
         browser.start(queue: queue)
@@ -46,5 +49,19 @@ final class KitchenSyncDiscovery {
     func stop() {
         browser?.cancel()
         browser = nil
+    }
+
+    /// The TXT record, if the responder published one. Firmware doesn't yet (`link-devices`
+    /// ESP-031), so this is `nil` for every unit in the field today — which is exactly why
+    /// `DeviceMatch` keeps a hostname fallback.
+    private static func txt(of result: NWBrowser.Result) -> [String: String]? {
+        guard case let .bonjour(record) = result.metadata else { return nil }
+        var entries: [String: String] = [:]
+        for (key, entry) in record {
+            if case let .string(value) = entry {
+                entries[key] = value
+            }
+        }
+        return entries.isEmpty ? nil : entries
     }
 }
