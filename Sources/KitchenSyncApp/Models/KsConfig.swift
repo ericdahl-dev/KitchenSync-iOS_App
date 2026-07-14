@@ -132,6 +132,24 @@ extension KsConfig {
         return keys
     }()
 
+    /// Turn the device's WiFi slots into editable rows for the settings sheet.
+    ///
+    /// The password is ALWAYS seeded empty, because it was never on the wire and
+    /// cannot be — `/config.json` omits it and `WifiSlot` only carries
+    /// `passwordIsSet`. That is not data loss: an empty password means "keep the
+    /// saved one" (`saveFormFields` omits the field entirely, which is
+    /// `ks_config_set`'s documented no-op), so blank is the correct default.
+    ///
+    /// Keyed by slot index, never by array position — `saveFormFields` picks the
+    /// `wifi_ssid` / `wifi_ssid1` / `wifi_ssid2` suffix off `id`, and a caller that
+    /// filters or reorders these must carry the `id` with them or it will silently
+    /// overwrite the wrong saved network.
+    func seededWifiEdits() -> [WifiCredentialEdit] {
+        wifi.enumerated().map { index, slot in
+            WifiCredentialEdit(id: index, ssid: slot.ssid, password: "")
+        }
+    }
+
     /// Every field explicit, for `POST /save` (`ks_form_resolve` on the
     /// firmware). A real HTML form omits an unchecked checkbox and relies on
     /// the firmware's pre-clear to read that as "off"; this client isn't an

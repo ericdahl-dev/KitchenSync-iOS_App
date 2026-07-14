@@ -129,6 +129,57 @@ final class DeviceDetailViewModelTests: XCTestCase {
         XCTAssertTrue(body.contains("led_bright=60"), body)
     }
 
+    /// `/save` reboots the device. It will stop answering for several seconds, and
+    /// the UI must say "rebooting" rather than "unreachable" — an expected
+    /// disappearance is not an error, and a user who just pressed WRITE & REBOOT
+    /// should not be told their device fell off the network.
+    func test_saving_marks_the_device_as_rebooting() async throws {
+        StubURLProtocol.routes["GET /config.json"] = .init(body: Self.configJSON)
+        StubURLProtocol.routes["POST /save"] = .init()
+        let vm = makeVM()
+        await vm.loadConfig()
+        let config = try XCTUnwrap(vm.config)
+        XCTAssertFalse(vm.isRebooting)
+
+        await vm.save(config, wifiEdits: [])
+
+        XCTAssertTrue(vm.isRebooting)
+    }
+
+    /// And it clears itself the instant the device answers again — no timer, no
+    /// guess. The device coming back IS the signal.
+    func test_rebooting_clears_when_the_device_answers_again() async throws {
+        StubURLProtocol.routes["GET /config.json"] = .init(body: Self.configJSON)
+        StubURLProtocol.routes["POST /save"] = .init()
+        let vm = makeVM()
+        await vm.loadConfig()
+        let config = try XCTUnwrap(vm.config)
+        await vm.save(config, wifiEdits: [])
+        XCTAssertTrue(vm.isRebooting)
+
+        StubURLProtocol.routes["GET /status"] = .init(body: Self.statusJSON)
+        await vm.refreshStatus()
+
+        XCTAssertFalse(vm.isRebooting)
+    }
+
+    /// A failed poll while rebooting must NOT clear the flag — that's the device
+    /// still being down, which is exactly what we're waiting out.
+    func test_a_failed_poll_while_rebooting_keeps_the_rebooting_state() async throws {
+        StubURLProtocol.routes["GET /config.json"] = .init(body: Self.configJSON)
+        StubURLProtocol.routes["POST /save"] = .init()
+        let vm = makeVM()
+        await vm.loadConfig()
+        let config = try XCTUnwrap(vm.config)
+        await vm.save(config, wifiEdits: [])
+
+        // No /status route registered -> the stub 404s -> the fetch throws.
+        await vm.refreshStatus()
+
+        XCTAssertTrue(vm.isRebooting)
+        XCTAssertNil(vm.status)
+    }
+
     // MARK: The poll loop
 
     private func makePollingVM() -> DeviceDetailViewModel {
