@@ -46,7 +46,9 @@ struct DeviceListView: View {
                 Section {
                     ForEach(discovered) { device in
                         NavigationLink(value: device) {
-                            DeviceRow(device: device, status: vm.statuses[device.id])
+                            DeviceRow(device: device,
+                                      status: vm.statuses[device.id],
+                                      reachability: vm.reachability(of: device.id))
                         }
                     }
                 } header: {
@@ -60,7 +62,9 @@ struct DeviceListView: View {
                     // removeManualDevices(at:) expects.
                     ForEach(manual) { device in
                         NavigationLink(value: device) {
-                            DeviceRow(device: device, status: vm.statuses[device.id])
+                            DeviceRow(device: device,
+                                      status: vm.statuses[device.id],
+                                      reachability: vm.reachability(of: device.id))
                         }
                     }
                     .onDelete { vm.removeManualDevices(at: $0) }
@@ -136,10 +140,13 @@ private struct SectionHead: View {
 private struct DeviceRow: View {
     let device: KitchenSyncDevice
     let status: KsStatus?
+    let reachability: DeviceListViewModel.Reachability
+
+    private var live: Bool { status != nil && reachability == .reachable }
 
     var body: some View {
         HStack(spacing: 12) {
-            KSPowerLED(alive: status != nil)
+            KSPowerLED(alive: live)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(device.displayName.uppercased())
@@ -156,7 +163,13 @@ private struct DeviceRow: View {
                         .lineLimit(1)
                 }
 
-                if let status {
+                if reachability == .unreachable {
+                    // An expected-to-be-there device that has missed three polls in a
+                    // row. Say so — the whole point of the app is telling you the state
+                    // of hardware on stage, and "silently stale" is the worst answer.
+                    KSPill(text: "UNREACHABLE", color: KS.amber)
+                        .padding(.top, 2)
+                } else if let status {
                     summaryPill(status.transportSummary)
                         .padding(.top, 2)
                 } else if device.addedManually {
@@ -178,7 +191,7 @@ private struct DeviceRow: View {
             }
         }
         .padding(.vertical, 10)
-        .opacity(status == nil ? 0.55 : 1)
+        .opacity(live ? 1 : 0.55)
         .listRowBackground(Color.clear)
         .listRowSeparatorTint(KS.line)
     }

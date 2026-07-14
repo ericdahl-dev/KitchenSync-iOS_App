@@ -78,6 +78,125 @@ final class DeviceListViewModelTests: XCTestCase {
                        "offset 0 must delete the first MANUAL device, not the discovered one")
     }
 
+    // MARK: Reachability (T-010)
+    //
+    // refreshAll() used to swallow every polling failure with `try?` and keep the last
+    // known status, so a device that had dropped off the network looked FINE — showing
+    // its last bpm and peer count indefinitely, indistinguishable from a live one.
+    //
+    // For an app whose whole job is telling you the state of hardware on stage, that is
+    // the wrong default.
+
+    private static let statusJSON = """
+    {"bpm":128.0,"min":0.0,"peers":4,"usb":true,"tx":1,"fw":"1.2.3",
+     "follow_enabled":false,"follow_bpm":0.0,"follow_confidence":0.0,"follow_valid":false,
+     "launch":[0,0,0,0],"playing":false,"link_owns":false}
+    """.data(using: .utf8)!
+
+    private func makeStubbedVM() -> DeviceListViewModel {
+        let defaults = UserDefaults(suiteName: "DeviceListViewModelTests.\(UUID().uuidString)")!
+        return DeviceListViewModel(store: ManualDeviceStore(defaults: defaults),
+                                   session: StubURLProtocol.session())
+    }
+
+    func test_a_device_that_answers_is_reachable() async {
+        StubURLProtocol.reset()
+        StubURLProtocol.routes["GET /status"] = .init(body: Self.statusJSON)
+        let vm = makeStubbedVM()
+        vm.addManualDevice(host: "a.local")
+
+        await vm.refreshNow()
+
+        XCTAssertEqual(vm.reachability(of: "a.local"), .reachable)
+        XCTAssertEqual(vm.statuses["a.local"]?.bpm, 128.0)
+    }
+
+    /// One dropped request on a busy LAN is NOISE, not a disconnection. At a 2s poll,
+    /// flapping a red badge on every missed packet would be worse than the old
+    /// behaviour. A single miss keeps the device reachable and keeps its last status.
+    func test_a_single_missed_poll_does_not_declare_the_device_gone() async {
+        StubURLProtocol.reset()
+        StubURLProtocol.routes["GET /status"] = .init(body: Self.statusJSON)
+        let vm = makeStubbedVM()
+        vm.addManualDevice(host: "a.local")
+        await vm.refreshNow()
+
+        StubURLProtocol.routes = [:]   // device stops answering
+        await vm.refreshNow()
+
+        XCTAssertEqual(vm.reachability(of: "a.local"), .reachable)
+        XCTAssertNotNil(vm.statuses["a.local"], "the last known status is still the best we have")
+    }
+
+    func test_three_consecutive_misses_declares_the_device_unreachable() async {
+        StubURLProtocol.reset()
+        StubURLProtocol.routes["GET /status"] = .init(body: Self.statusJSON)
+        let vm = makeStubbedVM()
+        vm.addManualDevice(host: "a.local")
+        await vm.refreshNow()
+
+        StubURLProtocol.routes = [:]
+        await vm.refreshNow()
+        await vm.refreshNow()
+        await vm.refreshNow()
+
+        XCTAssertEqual(vm.reachability(of: "a.local"), .unreachable)
+    }
+
+    /// The stale status must NOT keep being served as fact once the device is gone.
+    func test_an_unreachable_devices_status_is_dropped() async {
+        StubURLProtocol.reset()
+        StubURLProtocol.routes["GET /status"] = .init(body: Self.statusJSON)
+        let vm = makeStubbedVM()
+        vm.addManualDevice(host: "a.local")
+        await vm.refreshNow()
+
+        StubURLProtocol.routes = [:]
+        for _ in 0..<3 { await vm.refreshNow() }
+
+        XCTAssertNil(vm.statuses["a.local"],
+                     "a device that is gone must not still be reporting 128 bpm")
+    }
+
+    /// Recovery is automatic — no user action, no manual clear.
+    func test_a_device_that_comes_back_is_reachable_again() async {
+        StubURLProtocol.reset()
+        StubURLProtocol.routes["GET /status"] = .init(body: Self.statusJSON)
+        let vm = makeStubbedVM()
+        vm.addManualDevice(host: "a.local")
+        await vm.refreshNow()
+        StubURLProtocol.routes = [:]
+        for _ in 0..<3 { await vm.refreshNow() }
+        XCTAssertEqual(vm.reachability(of: "a.local"), .unreachable)
+
+        StubURLProtocol.routes["GET /status"] = .init(body: Self.statusJSON)
+        await vm.refreshNow()
+
+        XCTAssertEqual(vm.reachability(of: "a.local"), .reachable)
+        XCTAssertEqual(vm.statuses["a.local"]?.bpm, 128.0)
+    }
+
+    /// A single success resets the miss counter — three misses spread across a flaky
+    /// hour with successes between them is a working device, not a dead one.
+    func test_a_success_resets_the_miss_counter() async {
+        StubURLProtocol.reset()
+        StubURLProtocol.routes["GET /status"] = .init(body: Self.statusJSON)
+        let vm = makeStubbedVM()
+        vm.addManualDevice(host: "a.local")
+        await vm.refreshNow()
+
+        for _ in 0..<2 {
+            StubURLProtocol.routes = [:]
+            await vm.refreshNow()                                   // miss
+            StubURLProtocol.routes["GET /status"] = .init(body: Self.statusJSON)
+            await vm.refreshNow()                                   // recover
+        }
+        StubURLProtocol.routes = [:]
+        await vm.refreshNow()                                       // one more miss
+
+        XCTAssertEqual(vm.reachability(of: "a.local"), .reachable)
+    }
+
     func test_removing_a_manual_device_persists() {
         let defaults = UserDefaults(suiteName: "DeviceListViewModelTests.\(UUID().uuidString)")!
         let store = ManualDeviceStore(defaults: defaults)
