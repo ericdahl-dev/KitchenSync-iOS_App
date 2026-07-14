@@ -17,7 +17,14 @@ struct DeviceListView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if vm.devices.isEmpty {
+                // Order matters. "Looking for KitchenSync units on this network…" is a LIE
+                // when iOS has denied us the local network — we are not looking, and we
+                // never will be. That message is what sent the user off to debug a WiFi
+                // network that was working perfectly, while the device sat on the bench
+                // blinking in time with the session.
+                if vm.discoveryStatus.needsUserAction && vm.devices.isEmpty {
+                    localNetworkBlocked
+                } else if vm.devices.isEmpty {
                     emptyState
                 } else {
                     list
@@ -42,6 +49,10 @@ struct DeviceListView: View {
 
     private var list: some View {
         List {
+            if vm.discoveryStatus.needsUserAction {
+                Section { localNetworkBlocked }
+            }
+
             if !discovered.isEmpty {
                 Section {
                     ForEach(discovered) { device in
@@ -76,6 +87,44 @@ struct DeviceListView: View {
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .refreshable { await vm.refreshNow() }
+    }
+
+    /// iOS is refusing us the local network, so there is nothing to look for and no point
+    /// pretending otherwise.
+    ///
+    /// This is the ONE failure on this screen the user can actually fix, and the app used
+    /// to say nothing at all about it — Bonjour just returns an empty set forever. Name the
+    /// cause, and put them one tap from the switch.
+    private var localNetworkBlocked: some View {
+        VStack(spacing: 14) {
+            KSPowerLED(alive: false)
+
+            Text("iOS is blocking Local Network access")
+                .font(.ksMono(14))
+                .foregroundStyle(KS.ember)
+                .multilineTextAlignment(.center)
+
+            Text("KitchenSync can't see your devices without it — discovery finds nothing, even when a unit is powered up and following the session.")
+                .font(.ksMono(12))
+                .foregroundStyle(KS.mut)
+                .multilineTextAlignment(.center)
+
+            Button("Open Settings") {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            }
+            .font(.ksDisplay(14))
+            .tracking(1.4)
+
+            Button("Add by IP") { addingDevice = true }
+                .font(.ksMono(12))
+                .foregroundStyle(KS.mut)
+        }
+        .padding(28)
+        .frame(maxWidth: .infinity)
+        .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
     }
 
     /// Not "No Devices." The overwhelmingly common cause is the phone being on the
