@@ -37,8 +37,10 @@ struct DeviceDetailView: View {
 
                 if let config = vm.config {
                     clockOutSection(config)
-                    metronomeSection(config)
-                    ledSection(config)
+                    // A device only gets a section for hardware it actually reports. No
+                    // speaker, no metronome controls. No strip, no LED controls.
+                    if let m = config.metronome { metronomeSection(m) }
+                    if let l = config.led { ledSection(l) }
                 } else {
                     configUnavailable
                 }
@@ -271,18 +273,20 @@ struct DeviceDetailView: View {
         }
     }
 
-    private func metronomeSection(_ config: KsConfig) -> some View {
+    /// Rendered ONLY when the device reports a speaker. A metronome control on a board
+    /// with no speaker is a UI that lies about the hardware.
+    private func metronomeSection(_ m: MetronomeConfig) -> some View {
         KSSectionRail(title: "METRONOME") {
             // NOT a toggle. `metronome` enable has no KsLiveEdit case — it requires a
             // full /save, which REBOOTS the device. It is deliberately unreachable
             // from this screen. (T-007 gives it a home behind a warning.)
-            RebootOnlyRow(label: "enable", value: config.metronomeEnabled ? "ON" : "OFF")
+            RebootOnlyRow(label: "enable", value: m.enabled ? "ON" : "OFF")
 
             HStack {
                 Text("accent").font(.ksMono(12)).foregroundStyle(KS.mut)
                 Spacer()
                 Toggle("", isOn: Binding(
-                    get: { config.metronomeAccent },
+                    get: { m.accent },
                     set: { v in Task { await vm.apply(.metronomeAccent(v)) } }
                 ))
                 .toggleStyle(KSSwitchStyle())
@@ -290,13 +294,13 @@ struct DeviceDetailView: View {
                 .accessibilityLabel("Metronome accent")
             }
 
-            KSLiveSlider(label: "VOL", range: 0...100, value: config.metronomeVolume) { v in
+            KSLiveSlider(label: "VOL", range: 0...100, value: m.volume) { v in
                 Task { await vm.apply(.metronomeVolume(v)) }
             }
 
             KSField(prefix: "VOICE") {
                 Picker("Voice", selection: Binding(
-                    get: { config.metronomeVoice },
+                    get: { m.voice },
                     set: { v in Task { await vm.apply(.metronomeVoice(v)) } }
                 )) {
                     Text("Tone").tag(0)
@@ -310,13 +314,15 @@ struct DeviceDetailView: View {
         }
     }
 
-    private func ledSection(_ config: KsConfig) -> some View {
+    /// Rendered ONLY when a strip is actually wired. Solder one onto a Touch, flip one
+    /// FIRMWARE flag, and this section appears — with no change to this app.
+    private func ledSection(_ l: LedConfig) -> some View {
         KSSectionRail(title: "LED STRIP · VISUAL METRONOME") {
             HStack {
                 Text("enable").font(.ksMono(12)).foregroundStyle(KS.mut)
                 Spacer()
                 Toggle("", isOn: Binding(
-                    get: { config.ledEnabled },
+                    get: { l.enabled },
                     set: { v in Task { await vm.apply(.ledEnabled(v)) } }
                 ))
                 .toggleStyle(KSSwitchStyle())
@@ -324,16 +330,16 @@ struct DeviceDetailView: View {
                 .accessibilityLabel("LED enable")
             }
 
-            KSLiveSlider(label: "BRIGHT", range: 0...100, value: config.ledBrightness) { v in
+            KSLiveSlider(label: "BRIGHT", range: 0...100, value: l.brightness) { v in
                 Task { await vm.apply(.ledBrightness(v)) }
             }
-            KSLiveSlider(label: "FADE", range: 0...100, value: config.ledFade) { v in
+            KSLiveSlider(label: "FADE", range: 0...100, value: l.fade) { v in
                 Task { await vm.apply(.ledFade(v)) }
             }
 
             KSField(prefix: "MODE") {
                 Picker("Mode", selection: Binding(
-                    get: { config.ledMode },
+                    get: { l.mode },
                     set: { v in Task { await vm.apply(.ledMode(v)) } }
                 )) {
                     Text("Chase").tag(0)
@@ -347,7 +353,7 @@ struct DeviceDetailView: View {
 
             KSField(prefix: "BEAT") {
                 ColorPicker("Beat colour", selection: Binding(
-                    get: { Color(hex: config.ledBeatColor) },
+                    get: { Color(hex: l.beatColor) },
                     set: { c in Task { await vm.apply(.ledBeatColor(c.rgb24)) } }
                 ), supportsOpacity: false)
                 .labelsHidden()
@@ -356,7 +362,7 @@ struct DeviceDetailView: View {
 
             KSField(prefix: "ACCENT") {
                 ColorPicker("Accent colour", selection: Binding(
-                    get: { Color(hex: config.ledAccentColor) },
+                    get: { Color(hex: l.accentColor) },
                     set: { c in Task { await vm.apply(.ledAccentColor(c.rgb24)) } }
                 ), supportsOpacity: false)
                 .labelsHidden()
