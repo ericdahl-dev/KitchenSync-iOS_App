@@ -36,16 +36,10 @@ struct DeviceDetailView: View {
                 masterTransport
 
                 if let config = vm.config {
-                    clockOutSection(config)
-                    // A device only gets a section for hardware it actually reports. No
-                    // speaker, no metronome controls. No strip, no LED controls.
-                    if let m = config.metronome { metronomeSection(m) }
-                    if let l = config.led { ledSection(l) }
+                    outputs(config)
                 } else {
                     configUnavailable
                 }
-
-                diagnostics
             }
             .padding()
         }
@@ -79,9 +73,16 @@ struct DeviceDetailView: View {
         }
         .sheet(isPresented: $showingSettings) {
             if let config = vm.config {
-                DeviceSettingsSheet(deviceName: device.displayName, config: config) { draft, wifiEdits in
-                    Task { await vm.save(draft, wifiEdits: wifiEdits) }
-                }
+                // The LIVE surface. Device Setup (the reboot-required half) is a door INSIDE it,
+                // never adjacent to a live control.
+                DeviceLiveSettingsSheet(
+                    deviceName: device.displayName,
+                    config: config,
+                    status: vm.status,
+                    clockFault: vm.clockFault,
+                    onEdit: { edit in Task { await vm.apply(edit) } },
+                    onSave: { draft, wifiEdits in Task { await vm.save(draft, wifiEdits: wifiEdits) } }
+                )
             }
         }
         .sheet(isPresented: $showingFirmware) {
@@ -243,24 +244,18 @@ struct DeviceDetailView: View {
         }
     }
 
-    // MARK: Live sections
+    // MARK: The outputs, as they appear ON STAGE
+    //
+    // Transport, plus the two controls you actually reach for mid-set: NUDGE and SWING. Cable,
+    // rate, follow-Link and enable are in Settings — knocking a cable assignment loose during a
+    // song is a way to ruin it, and you cannot knock what is not on the screen.
 
-    private func clockOutSection(_ config: KsConfig) -> some View {
+    private func outputs(_ config: KsConfig) -> some View {
         KSSectionRail(title: "MIDI CLOCK OUT") {
-            HStack {
-                Text("master enable").font(.ksMono(12)).foregroundStyle(KS.mut)
-                Spacer()
-                Toggle("", isOn: Binding(
-                    get: { config.clockOutEnabled },
-                    set: { v in Task { await vm.apply(.clockOutEnabled(v)) } }
-                ))
-                .toggleStyle(KSSwitchStyle())
-                .labelsHidden()
-                .accessibilityLabel("Master clock out enable")
-            }
-
+            // One card per element. The array LENGTH is the device's real output count —
+            // 1 on a Touch, 4 on a P4 — never a hardcoded 4.
             ForEach(Array(config.clock.enumerated()), id: \.offset) { i, out in
-                OutputCardView(
+                PerformanceOutputCard(
                     index: i,
                     config: out,
                     launch: vm.status?.launch.indices.contains(i) == true ? vm.status!.launch[i] : .stopped,
@@ -273,103 +268,7 @@ struct DeviceDetailView: View {
         }
     }
 
-    /// Rendered ONLY when the device reports a speaker. A metronome control on a board
-    /// with no speaker is a UI that lies about the hardware.
-    private func metronomeSection(_ m: MetronomeConfig) -> some View {
-        KSSectionRail(title: "METRONOME") {
-            // NOT a toggle. `metronome` enable has no KsLiveEdit case — it requires a
-            // full /save, which REBOOTS the device. It is deliberately unreachable
-            // from this screen. (T-007 gives it a home behind a warning.)
-            RebootOnlyRow(label: "enable", value: m.enabled ? "ON" : "OFF")
 
-            HStack {
-                Text("accent").font(.ksMono(12)).foregroundStyle(KS.mut)
-                Spacer()
-                Toggle("", isOn: Binding(
-                    get: { m.accent },
-                    set: { v in Task { await vm.apply(.metronomeAccent(v)) } }
-                ))
-                .toggleStyle(KSSwitchStyle())
-                .labelsHidden()
-                .accessibilityLabel("Metronome accent")
-            }
-
-            KSLiveSlider(label: "VOL", range: 0...100, value: m.volume) { v in
-                Task { await vm.apply(.metronomeVolume(v)) }
-            }
-
-            KSField(prefix: "VOICE") {
-                Picker("Voice", selection: Binding(
-                    get: { m.voice },
-                    set: { v in Task { await vm.apply(.metronomeVoice(v)) } }
-                )) {
-                    Text("Tone").tag(0)
-                    Text("Click").tag(1)
-                    Text("Wood").tag(2)
-                }
-                .pickerStyle(.menu)
-                .tint(KS.ink)
-                .frame(maxWidth: .infinity, alignment: .trailing)
-            }
-        }
-    }
-
-    /// Rendered ONLY when a strip is actually wired. Solder one onto a Touch, flip one
-    /// FIRMWARE flag, and this section appears — with no change to this app.
-    private func ledSection(_ l: LedConfig) -> some View {
-        KSSectionRail(title: "LED STRIP · VISUAL METRONOME") {
-            HStack {
-                Text("enable").font(.ksMono(12)).foregroundStyle(KS.mut)
-                Spacer()
-                Toggle("", isOn: Binding(
-                    get: { l.enabled },
-                    set: { v in Task { await vm.apply(.ledEnabled(v)) } }
-                ))
-                .toggleStyle(KSSwitchStyle())
-                .labelsHidden()
-                .accessibilityLabel("LED enable")
-            }
-
-            KSLiveSlider(label: "BRIGHT", range: 0...100, value: l.brightness) { v in
-                Task { await vm.apply(.ledBrightness(v)) }
-            }
-            KSLiveSlider(label: "FADE", range: 0...100, value: l.fade) { v in
-                Task { await vm.apply(.ledFade(v)) }
-            }
-
-            KSField(prefix: "MODE") {
-                Picker("Mode", selection: Binding(
-                    get: { l.mode },
-                    set: { v in Task { await vm.apply(.ledMode(v)) } }
-                )) {
-                    Text("Chase").tag(0)
-                    Text("Flash").tag(1)
-                    Text("Fill").tag(2)
-                }
-                .pickerStyle(.menu)
-                .tint(KS.ink)
-                .frame(maxWidth: .infinity, alignment: .trailing)
-            }
-
-            KSField(prefix: "BEAT") {
-                ColorPicker("Beat colour", selection: Binding(
-                    get: { Color(hex: l.beatColor) },
-                    set: { c in Task { await vm.apply(.ledBeatColor(c.rgb24)) } }
-                ), supportsOpacity: false)
-                .labelsHidden()
-                .frame(maxWidth: .infinity, alignment: .trailing)
-            }
-
-            KSField(prefix: "ACCENT") {
-                ColorPicker("Accent colour", selection: Binding(
-                    get: { Color(hex: l.accentColor) },
-                    set: { c in Task { await vm.apply(.ledAccentColor(c.rgb24)) } }
-                ), supportsOpacity: false)
-                .labelsHidden()
-                .frame(maxWidth: .infinity, alignment: .trailing)
-            }
-        }
-    }
 
     /// Why the settings aren't here — attributed from the actual failure, not guessed
     /// from whether `/status` happens to be answering.
@@ -413,71 +312,7 @@ struct DeviceDetailView: View {
 
     // MARK: Diagnostics
 
-    private var diagnostics: some View {
-        KSSectionRail(title: "DIAGNOSTICS") {
-            DisclosureGroup {
-                VStack(spacing: 6) {
-                    if let t = vm.status?.tickHealth {
-                        // These are LIFETIME totals — the firmware says so. A non-zero value means
-                        // "this happened at some point", usually at boot, and colouring it amber
-                        // forever is how a real, healthy device ends up permanently flagged. The
-                        // number is still worth SHOWING; it just isn't an alarm. Only a counter
-                        // that is MOVING right now warns (see `hasDiagWarning`).
-                        DiagRow("dropped ticks", "\(t.droppedTicks) since boot",
-                                warn: vm.clockFault == .droppingNow)
-                        DiagRow("bursts", "\(t.bursts)")
-                        DiagRow("max gap µs", "\(t.maxGapMicros)")
-                        DiagRow("max work µs", "\(t.maxWorkMicros)")
-                        DiagRow("overruns", "\(t.overruns) since boot",
-                                warn: vm.clockFault == .droppingNow)
 
-                        if vm.clockFault == .droppingNow {
-                            Text("The clock task is dropping ticks RIGHT NOW.")
-                                .font(.ksMono(11))
-                                .foregroundStyle(KS.amberText)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.top, 2)
-                        }
-                    }
-                    if let p = vm.status?.phaseHealth {
-                        // maxStepMicros is the number that, unread, cost 138 seconds of
-                        // silent DIN clock in ESP-027. It SHOULD carry a warning
-                        // threshold — but nobody has told us what that threshold is, and
-                        // inventing one would be worse than showing the raw number.
-                        DiagRow("max origin step µs", "\(p.maxStepMicros)")
-                        DiagRow("rtt min/max µs", "\(p.rttMinMicros)/\(p.rttMaxMicros)")
-                    }
-                    if vm.status?.tickHealth == nil && vm.status?.phaseHealth == nil {
-                        Text("not measured")
-                            .font(.ksMono(12))
-                            .foregroundStyle(KS.mut)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                }
-                .padding(.top, 8)
-            } label: {
-                HStack(spacing: 6) {
-                    Text("tick / phase health")
-                        .font(.ksMono(12))
-                        .foregroundStyle(KS.mut)
-                    if hasDiagWarning {
-                        Circle().fill(KS.amber).frame(width: 6, height: 6)
-                    }
-                }
-            }
-            .tint(KS.mut)
-        }
-    }
-
-    /// A RATE, not a lifetime total.
-    ///
-    /// This used to be `droppedTicks > 0`. But those are LIFETIME counters, so a real device that
-    /// dropped 47 ticks at boot and has been flawless since lit an amber warning **forever** — and
-    /// a warning that is always on is one nobody reads, which makes it worthless on the day it
-    /// matters. Only a counter that MOVES between polls is news. See `ClockFault`.
-    private var hasDiagWarning: Bool {
-        vm.clockFault == .droppingNow
-    }
 }
 
 // MARK: - Pieces
