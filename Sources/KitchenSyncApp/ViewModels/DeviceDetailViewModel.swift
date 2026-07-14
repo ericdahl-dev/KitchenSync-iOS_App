@@ -42,12 +42,40 @@ final class DeviceDetailViewModel: ObservableObject {
         pollTask = nil
     }
 
+    /// Why we do or don't have this device's telemetry.
+    ///
+    /// A DECODE failure and a TRANSPORT failure are different problems with different fixes, and
+    /// collapsing them is how a live device gets reported as dead. Found on real hardware: a
+    /// KitchenSync Touch answers `/status` with HTTP 200 in a dialect this app can't read
+    /// (`link-devices` ESP-029), and the app called it UNREACHABLE — sending the user off to debug
+    /// a network that was working perfectly.
+    enum StatusAvailability: Equatable {
+        case unknown
+        case available
+        /// It ANSWERED, but we couldn't decode it. The device is fine; its firmware speaks a
+        /// different `/status`. The way out is a firmware update, not a network fix.
+        case unsupported
+        /// It didn't answer at all.
+        case unreachable
+    }
+
+    @Published private(set) var statusAvailability: StatusAvailability = .unknown
+
     func refreshStatus() async {
-        let fresh = try? await client.fetchStatus()
-        status = fresh
-        // A failed poll while rebooting is the device still being down — which is
-        // exactly what we're waiting out. Only an ANSWER clears the flag.
-        if fresh != nil { isRebooting = false }
+        do {
+            let fresh = try await client.fetchStatus()
+            status = fresh
+            statusAvailability = .available
+            isRebooting = false     // the device answering IS the signal
+        } catch is DecodingError {
+            // It's there. We just can't read it.
+            statusAvailability = .unsupported
+        } catch {
+            status = nil
+            statusAvailability = .unreachable
+            // A failed poll while rebooting is the device still being down — which is
+            // exactly what we're waiting out. Only an ANSWER clears that flag.
+        }
     }
 
     /// Why we do or don't have the device's settings.

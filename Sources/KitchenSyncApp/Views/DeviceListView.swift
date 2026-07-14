@@ -163,7 +163,13 @@ private struct DeviceRow: View {
                         .lineLimit(1)
                 }
 
-                if reachability == .unreachable {
+                if reachability == .unsupported {
+                    // It ANSWERS — we just can't read it. Saying "unreachable" here would send
+                    // the user off to debug a network that is working perfectly. The fix is a
+                    // firmware update, and the label has to point at that.
+                    KSPill(text: "UNSUPPORTED FW", color: KS.amber)
+                        .padding(.top, 2)
+                } else if reachability == .unreachable {
                     // An expected-to-be-there device that has missed three polls in a
                     // row. Say so — the whole point of the app is telling you the state
                     // of hardware on stage, and "silently stale" is the worst answer.
@@ -184,7 +190,9 @@ private struct DeviceRow: View {
                 KSGlass(bpm: status?.bpm ?? 0, size: 26)
                 // "0 PEERS" for a device that isn't answering is a lie dressed as
                 // a measurement. If there's no status, we don't know the peer count.
-                Text(status.map { "\($0.peers) PEERS" } ?? "NO SIGNAL")
+                // And "NO SIGNAL" is wrong for a device that's answering fine — it's
+                // signalling perfectly, in a dialect we can't read.
+                Text(peersCaption)
                     .font(.ksMono(10.5))
                     .tracking(1.6)
                     .foregroundStyle(KS.mut)
@@ -194,6 +202,11 @@ private struct DeviceRow: View {
         .opacity(live ? 1 : 0.55)
         .listRowBackground(Color.clear)
         .listRowSeparatorTint(KS.line)
+    }
+
+    private var peersCaption: String {
+        if let status { return "\(status.peers) PEERS" }
+        return reachability == .unsupported ? "CAN'T READ" : "NO SIGNAL"
     }
 
     @ViewBuilder
