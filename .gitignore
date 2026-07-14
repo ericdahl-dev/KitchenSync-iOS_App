@@ -1,0 +1,16 @@
+# XcodeGen output — generated from project.yml, never hand-edited or committed.
+*.xcodeproj/
+*.xcworkspace/
+
+# Xcode
+xcuserdata/
+DerivedData/
+*.xcuserstate
+*.xcscmblueprint
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# macOS
+.DS_Store

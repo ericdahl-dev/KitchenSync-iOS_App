@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDisplayName</key>
+	<string>KitchenSync</string>
+	<key>UILaunchScreen</key>
+	<dict/>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<!--
+	 Required for Bonjour discovery of KitchenSync units (NWBrowser on
+	 _http._tcp — the firmware advertises no more specific service type, see
+	 KitchenSyncDiscovery.swift). iOS 14+ gates any local-network traffic,
+	 mDNS included, behind this pair: the usage string is what the system
+	 permission prompt shows, NSBonjourServices is what makes the app
+	 eligible to browse that service type at all.
+	-->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>KitchenSync discovers and controls Link-sync hardware (KitchenSync units) on your local network.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_http._tcp</string>
+	</array>
+</dict>
+</plist>
