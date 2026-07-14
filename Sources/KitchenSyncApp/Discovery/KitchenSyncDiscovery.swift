@@ -24,6 +24,11 @@ import Network
 final class KitchenSyncDiscovery {
     var onHostnamesChanged: ((Set<String>) -> Void)?
 
+    /// Why the list is empty. Nothing used to ask this question, so a device that was
+    /// powered, on the network and audibly following Link looked identical to no device at
+    /// all — see `DiscoveryStatus`.
+    var onStatusChanged: ((DiscoveryStatus) -> Void)?
+
     private var browser: NWBrowser?
     private let queue = DispatchQueue(label: "dev.ericdahl.kitchensync.discovery")
 
@@ -31,6 +36,21 @@ final class KitchenSyncDiscovery {
         let parameters = NWParameters()
         parameters.includePeerToPeer = false
         let browser = NWBrowser(for: .bonjour(type: "_http._tcp", domain: nil), using: parameters)
+
+        // There was NO state handler here at all. A browser that iOS refused (Local Network
+        // permission) or that died on a network drop stayed dead, forever, in total silence:
+        // no devices, no error, nothing to go on. NWBrowser does not recover from `.failed`
+        // by itself, so somebody has to restart it, and nobody can if nobody is told.
+        browser.stateUpdateHandler = { [weak self] state in
+            let status = DiscoveryStatus(browserState: state)
+            self?.onStatusChanged?(status)
+
+            // A denial is NOT restartable — iOS will refuse the new browser exactly as it
+            // refused this one, and retrying in a loop would just hide the one fact the user
+            // needs. Only a genuine failure gets another go.
+            if status == .failed { self?.restart() }
+        }
+
         browser.browseResultsChangedHandler = { [weak self] results, _ in
             let matched = results.compactMap { result -> String? in
                 guard case let .service(name, _, _, _) = result.endpoint else { return nil }
@@ -47,8 +67,21 @@ final class KitchenSyncDiscovery {
     }
 
     func stop() {
+        browser?.stateUpdateHandler = nil   // cancelling is not news; don't report .stopped
         browser?.cancel()
         browser = nil
+    }
+
+    /// Rebuild the browser after a genuine failure. Backed off a little, because a network
+    /// that just dropped will not be back within the millisecond, and a hot retry loop
+    /// would burn the radio for nothing.
+    private func restart() {
+        queue.asyncAfter(deadline: .now() + 2) { [weak self] in
+            guard let self, self.browser != nil else { return }   // stop() won the race
+            self.browser?.cancel()
+            self.browser = nil
+            self.start()
+        }
     }
 
     /// The TXT record, if the responder published one. Firmware doesn't yet (`link-devices`
