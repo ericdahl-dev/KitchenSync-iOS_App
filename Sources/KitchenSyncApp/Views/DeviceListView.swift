@@ -24,6 +24,7 @@ struct DeviceListView: View {
                 }
             }
             .background(background)
+            .navigationDestination(for: KitchenSyncDevice.self) { DeviceDetailView(device: $0) }
             .navigationTitle("KitchenSync")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
@@ -43,7 +44,11 @@ struct DeviceListView: View {
         List {
             if !discovered.isEmpty {
                 Section {
-                    ForEach(discovered) { DeviceRow(device: $0, status: vm.statuses[$0.id]) }
+                    ForEach(discovered) { device in
+                        NavigationLink(value: device) {
+                            DeviceRow(device: device, status: vm.statuses[device.id])
+                        }
+                    }
                 } header: {
                     SectionHead("DISCOVERED")
                 }
@@ -53,8 +58,12 @@ struct DeviceListView: View {
                 Section {
                     // Offsets from this ForEach index `manual` — which is exactly what
                     // removeManualDevices(at:) expects.
-                    ForEach(manual) { DeviceRow(device: $0, status: vm.statuses[$0.id]) }
-                        .onDelete { vm.removeManualDevices(at: $0) }
+                    ForEach(manual) { device in
+                        NavigationLink(value: device) {
+                            DeviceRow(device: device, status: vm.statuses[device.id])
+                        }
+                    }
+                    .onDelete { vm.removeManualDevices(at: $0) }
                 } header: {
                     SectionHead("ADDED BY HAND")
                 }
