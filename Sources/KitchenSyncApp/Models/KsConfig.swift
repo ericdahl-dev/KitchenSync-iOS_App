@@ -260,6 +260,47 @@ extension KsConfig {
     fileprivate static func colorField(_ value: UInt32) -> String {
         String(format: "#%06X", value & 0xFFFFFF)
     }
+
+    /// Fold one ACCEPTED live edit into the local config, mirroring what `/live` just
+    /// did on the device. Call this ONLY after the POST returned 2xx: this is not an
+    /// optimistic guess, it is bookkeeping for a change that already happened.
+    ///
+    /// Without it a working `/live` still LOOKS broken — the POST succeeds, the device
+    /// obeys, and the number on screen never moves, because `/config.json` is only
+    /// re-fetched on demand.
+    ///
+    /// A capability that isn't fitted (`metronome == nil`, `led == nil`) stays nil. An
+    /// edit can't bring hardware into existence, and an index past the outputs this
+    /// device actually has is dropped rather than grown into — the array's length IS
+    /// the output count (ESP-030), so appending to it would invent a jack.
+    mutating func apply(_ edit: KsLiveEdit) {
+        switch edit {
+        case .clockOutEnabled(let v): clockOutEnabled = v
+
+        case .metronomeAccent(let v): metronome?.accent = v
+        case .metronomeVolume(let v): metronome?.volume = v
+        case .metronomeVoice(let v):  metronome?.voice = v
+
+        case .ledEnabled(let v):      led?.enabled = v
+        case .ledBrightness(let v):   led?.brightness = v
+        case .ledMode(let v):         led?.mode = v
+        case .ledFade(let v):         led?.fade = v
+        case .ledBeatColor(let v):    led?.beatColor = v
+        case .ledAccentColor(let v):  led?.accentColor = v
+
+        case .outputEnabled(let i, let v):      withOutput(i) { $0.enabled = v }
+        case .outputCable(let i, let v):        withOutput(i) { $0.cable = v }
+        case .outputPPQN(let i, let v):         withOutput(i) { $0.ppqn = v }
+        case .outputPhase(let i, let v):        withOutput(i) { $0.phaseMilliBeats = v }
+        case .outputSwing(let i, let v):        withOutput(i) { $0.swingMilliBeats = v }
+        case .outputFollowsLink(let i, let v):  withOutput(i) { $0.followsLinkTransport = v }
+        }
+    }
+
+    private mutating func withOutput(_ index: Int, _ change: (inout ClockOutputConfig) -> Void) {
+        guard clock.indices.contains(index) else { return }
+        change(&clock[index])
+    }
 }
 
 /// The Settings screen's per-slot WiFi input — SSID plus an optionally-typed
