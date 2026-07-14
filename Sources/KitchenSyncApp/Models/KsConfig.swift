@@ -104,6 +104,52 @@ struct KsConfig: Decodable, Equatable {
 }
 
 extension KsConfig {
+    /// The form fields that CANNOT be applied live — changing any of them requires a
+    /// full `POST /save`, which persists to NVS and **reboots the device**.
+    ///
+    /// This is the complement of `KsLiveEdit`'s case list, and the two are held
+    /// disjoint-and-exhaustive by `LiveRebootPartitionTests`. Add a field to
+    /// `saveFormFields` without classifying it and that test fails — which is the
+    /// point, because an unclassified field is a control that might silently restart
+    /// a device mid-set.
+    ///
+    /// Why these three (verified in `ks_web.cpp` — they lack the `class="live"`
+    /// attribute that every live field carries):
+    /// - `metronome` / `follow_beat` ENABLE: the ES8311 codec and I2S only come up at
+    ///   boot, so `/live` silently ignores them. Note the trap — `metro_accent`,
+    ///   `metro_vol` and `metro_voice` ARE live; only the *enable* is not.
+    /// - WiFi credentials: applied by the network stack at association time.
+    ///
+    /// The settings sheet (T-007) generates its `REBOOTS` tags from this set, so an
+    /// untagged reboot-required control there is impossible by construction.
+    static let rebootRequiredFormKeys: Set<String> = {
+        var keys: Set<String> = ["metronome", "follow_beat"]
+        for slot in 0..<wifiSlotCount {
+            let suffix = slot == 0 ? "" : String(slot)
+            keys.insert("wifi_ssid\(suffix)")
+            keys.insert("wifi_pass\(suffix)")
+        }
+        return keys
+    }()
+
+    /// Turn the device's WiFi slots into editable rows for the settings sheet.
+    ///
+    /// The password is ALWAYS seeded empty, because it was never on the wire and
+    /// cannot be — `/config.json` omits it and `WifiSlot` only carries
+    /// `passwordIsSet`. That is not data loss: an empty password means "keep the
+    /// saved one" (`saveFormFields` omits the field entirely, which is
+    /// `ks_config_set`'s documented no-op), so blank is the correct default.
+    ///
+    /// Keyed by slot index, never by array position — `saveFormFields` picks the
+    /// `wifi_ssid` / `wifi_ssid1` / `wifi_ssid2` suffix off `id`, and a caller that
+    /// filters or reorders these must carry the `id` with them or it will silently
+    /// overwrite the wrong saved network.
+    func seededWifiEdits() -> [WifiCredentialEdit] {
+        wifi.enumerated().map { index, slot in
+            WifiCredentialEdit(id: index, ssid: slot.ssid, password: "")
+        }
+    }
+
     /// Every field explicit, for `POST /save` (`ks_form_resolve` on the
     /// firmware). A real HTML form omits an unchecked checkbox and relies on
     /// the firmware's pre-clear to read that as "off"; this client isn't an

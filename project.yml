@@ -11,8 +11,24 @@ targets:
     platform: iOS
     sources:
       - path: Sources/KitchenSyncApp
+    # XcodeGen GENERATES this plist on every `xcodegen generate` — hand-edits to
+    # Sources/KitchenSyncApp/Info.plist are overwritten. Add keys here instead.
     info:
       path: Sources/KitchenSyncApp/Info.plist
+      properties:
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        # Without this, iOS runs the app letterboxed in legacy compatibility
+        # mode at a smaller screen size. An empty dict is the modern opt-in.
+        UILaunchScreen: {}
+        # Bonjour/mDNS is gated behind the local network permission (iOS 14+).
+        # Both keys are required: without them NWBrowser returns no results AND
+        # URLSession cannot resolve `<host>.local` — silently, no useful error.
+        # `_http._tcp` is what KitchenSyncDiscovery browses; the firmware
+        # advertises no more specific service type (see T-011).
+        NSLocalNetworkUsageDescription: KitchenSync finds your devices on the local network to show their status and control their MIDI clock.
+        NSBonjourServices:
+          - _http._tcp
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.ericdahl.kitchensync
@@ -29,6 +45,14 @@ targets:
       - path: Tests/KitchenSyncAppTests
     dependencies:
       - target: KitchenSyncApp
+    settings:
+      base:
+        # A test bundle still has to be code-signed, which needs an Info.plist.
+        # Letting Xcode synthesise one is the recommended route — there's nothing
+        # in it worth hand-maintaining.
+        GENERATE_INFOPLIST_FILE: "YES"
+        SWIFT_VERSION: "5.0"
+        SWIFT_STRICT_CONCURRENCY: complete
 
 schemes:
   KitchenSyncApp:
