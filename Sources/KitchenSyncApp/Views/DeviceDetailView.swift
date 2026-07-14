@@ -35,6 +35,10 @@ struct DeviceDetailView: View {
                 meterBridge
                 masterTransport
 
+                if let failure = vm.liveEditFailure {
+                    liveEditBanner(failure)
+                }
+
                 if let config = vm.config {
                     outputs(config)
                 } else {
@@ -249,6 +253,39 @@ struct DeviceDetailView: View {
     // Transport, plus the two controls you actually reach for mid-set: NUDGE and SWING. Cable,
     // rate, follow-Link and enable are in Settings — knocking a cable assignment loose during a
     // song is a way to ruin it, and you cannot knock what is not on the screen.
+
+    /// A live edit that didn't take. This banner exists because its absence was the bug:
+    /// NUDGE and SWING POSTed to a `/live` route the Touch didn't have, got a 404, and
+    /// the app said NOTHING. The stepper moved and the device didn't, which is the one
+    /// outcome a performance surface must never produce.
+    ///
+    /// Each case says a different true thing. "Can't reach it" and "it said no" send the
+    /// user to different places, and guessing between them is the mistake this codebase
+    /// keeps making (T-009, T-010, T-016, T-018).
+    private func liveEditBanner(_ failure: DeviceDetailViewModel.LiveEditFailure) -> some View {
+        let message: String
+        switch failure {
+        case .unsupportedByFirmware:
+            message = "This firmware can't take live edits. Update it to nudge and swing."
+        case .rejectedByDevice:
+            message = "The device refused that change."
+        case .unreachable:
+            message = "Couldn't reach the device. The change was not applied."
+        }
+        return HStack(spacing: 10) {
+            Image(systemName: "exclamationmark.triangle.fill")
+            Text(message)
+                .font(.footnote)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+        .foregroundStyle(KS.ember)
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(KS.emberFill, in: RoundedRectangle(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(KS.ember.opacity(0.35)))
+        .accessibilityElement(children: .combine)
+    }
 
     private func outputs(_ config: KsConfig) -> some View {
         KSSectionRail(title: "MIDI CLOCK OUT") {
