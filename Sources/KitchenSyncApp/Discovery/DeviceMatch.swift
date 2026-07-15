@@ -30,11 +30,16 @@ enum DeviceMatch {
     /// units working, not because it is correct.
     ///
     /// The firmware advertises generic `_http._tcp` with no TXT record, so the hostname is all a
-    /// client has. `ks_hostname()` builds `<product>-<last two MAC bytes>`: `kitchensync-a4f2` on
-    /// the P4, `kstouch-dfd0` on the Touch. Missing `kstouch` is what made a real device invisible.
+    /// client has. The hostname is `<product>-<last two MAC bytes>`: `kitchensync-a4f2` on the
+    /// P4, `kstouch-dfd0` on the Touch, `x32link-7a1c` on the headless (ESP-035). Missing
+    /// `kstouch` is what made a real device invisible once already.
     private static func matchesKnownHostname(_ name: String) -> Bool {
         knownHostPrefixes.contains { name.hasPrefix($0) }
     }
 
-    private static let knownHostPrefixes = ["kitchensync", "kstouch"]
+    /// `x32link` joined this list in ESP-035 — but adding it here was the SMALL half. That
+    /// unit had no mDNS whatsoever: it never advertised, so no matcher could have found it.
+    /// The user saw it exactly that way — "I see kstouch, not the headless" — while the box
+    /// sat there powered, on the network, and following the session.
+    private static let knownHostPrefixes = ["kitchensync", "kstouch", "x32link"]
 }
