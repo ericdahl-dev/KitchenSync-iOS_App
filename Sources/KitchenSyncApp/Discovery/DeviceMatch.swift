@@ -34,7 +34,9 @@ enum DeviceMatch {
     /// P4, `kstouch-dfd0` on the Touch, `x32link-7a1c` on the headless (ESP-035). Missing
     /// `kstouch` is what made a real device invisible once already.
     private static func matchesKnownHostname(_ name: String) -> Bool {
-        knownHostPrefixes.contains { name.hasPrefix($0) }
+        let lower = name.lowercased()   // a Bonjour instance name's case is not meaningful —
+                                        // the P4 advertises "KitchenSync", the Touch "kstouch-…"
+        return knownHostPrefixes.contains { lower.hasPrefix($0) }
     }
 
     /// `x32link` joined this list in ESP-035 — but adding it here was the SMALL half. That
