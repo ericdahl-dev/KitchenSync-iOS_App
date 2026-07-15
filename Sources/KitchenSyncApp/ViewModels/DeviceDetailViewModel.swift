@@ -71,6 +71,21 @@ final class DeviceDetailViewModel: ObservableObject {
     /// The previous poll's tick health — the other half of a rate.
     private var lastTick: TickHealth?
 
+    /// True when a Link session is currently driving the clock. Then Link owns the tempo
+    /// (the box follows it), so the set controls stand down.
+    var tempoIsLinkDriven: Bool { (status?.peers ?? 0) > 0 }
+
+    /// The tempo the control should SHOW. Not the stored set value — the tempo the box is
+    /// actually CLOCKING (`status.bpm`) when it's running, falling back to the stored set
+    /// value before the first poll. So it follows Link while a session drives, and when
+    /// Link leaves there's no jump: the box keeps Link's tempo, and the control was
+    /// already showing it. `nil` on a listener-only device (no settable tempo at all).
+    var tempoDisplay: Double? {
+        guard let stored = config?.tempo else { return nil }
+        if let b = status?.bpm, b > 0 { return b }
+        return stored
+    }
+
     func refreshStatus() async {
         do {
             let fresh = try await client.fetchStatus()

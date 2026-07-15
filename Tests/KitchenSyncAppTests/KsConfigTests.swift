@@ -30,6 +30,22 @@ final class KsConfigDecodingTests: XCTestCase {
         XCTAssertEqual(config.followBeatEnabled, false)
     }
 
+    // ESP-037: the stored free-run tempo. A clock box emits `bpm`; the app shows THIS
+    // number (distinct from the Link-driven KsStatus.bpm).
+    func test_decodes_the_stored_tempo_from_bpm() throws {
+        let json = #"{"clock_out":true,"bpm":128.500,"wifi":[],"clock":[]}"#
+        let config = try JSONDecoder().decode(KsConfig.self, from: Data(json.utf8))
+        XCTAssertEqual(config.tempo ?? 0, 128.5, accuracy: 0.001)
+    }
+
+    // A listener-only board (X32Link) omits `bpm` entirely — tempo is nil, not 0, so the
+    // app knows to hide the tempo control rather than show a fake 0 BPM.
+    func test_a_config_without_bpm_has_nil_tempo() throws {
+        let json = #"{"clock_out":false,"wifi":[],"clock":[]}"#
+        let config = try JSONDecoder().decode(KsConfig.self, from: Data(json.utf8))
+        XCTAssertNil(config.tempo)
+    }
+
     func test_decodes_hash_prefixed_hex_colors() throws {
         let config = try JSONDecoder().decode(KsConfig.self, from: Data(sampleConfigJSON.utf8))
         XCTAssertEqual(config.led?.beatColor, 0x00B400)
