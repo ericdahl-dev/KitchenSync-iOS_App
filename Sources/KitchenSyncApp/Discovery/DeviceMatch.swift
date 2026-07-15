@@ -31,17 +31,17 @@ enum DeviceMatch {
     ///
     /// The firmware advertises generic `_http._tcp` with no TXT record, so the hostname is all a
     /// client has. The hostname is `<product>-<last two MAC bytes>`: `kitchensync-a4f2` on the
-    /// P4, `kstouch-dfd0` on the Touch, `x32link-7a1c` on the headless (ESP-035). Missing
-    /// `kstouch` is what made a real device invisible once already.
+    /// P4, `kstouch-dfd0` on the Touch. Missing `kstouch` made a real device invisible once.
     private static func matchesKnownHostname(_ name: String) -> Bool {
         let lower = name.lowercased()   // a Bonjour instance name's case is not meaningful —
                                         // the P4 advertises "KitchenSync", the Touch "kstouch-…"
         return knownHostPrefixes.contains { lower.hasPrefix($0) }
     }
 
-    /// `x32link` joined this list in ESP-035 — but adding it here was the SMALL half. That
-    /// unit had no mDNS whatsoever: it never advertised, so no matcher could have found it.
-    /// The user saw it exactly that way — "I see kstouch, not the headless" — while the box
-    /// sat there powered, on the network, and following the session.
-    private static let knownHostPrefixes = ["kitchensync", "kstouch", "x32link"]
+    /// KitchenSync ONLY — the P4 and its Touch / Super Mini versions. X32Link is a SEPARATE
+    /// product (it happens to speak Link too) with its own app, so it is deliberately NOT
+    /// here, and the firmware publishes `dev=x32link` so the TXT path excludes it as well.
+    /// `x32link` was briefly in this list (ESP-035); removed once it became clear this app is
+    /// KitchenSync's, not the fleet's.
+    private static let knownHostPrefixes = ["kitchensync", "kstouch"]
 }
