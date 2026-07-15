@@ -16,6 +16,16 @@ final class DeviceMatchTests: XCTestCase {
                       "a real Touch on the bench was invisible to the app because of this")
     }
 
+    /// **A real P4 found this.** The ESP32-P4 advertises its Bonjour INSTANCE NAME as
+    /// "KitchenSync" (capital K, a friendly name), not the lowercase hostname the Touch
+    /// and X32Link use. hasPrefix is case-sensitive, so `"KitchenSync".hasPrefix(
+    /// "kitchensync")` is false and the P4 was invisible. A Bonjour name's case is not
+    /// meaningful; the match must be case-insensitive.
+    func test_the_p4_is_matched_despite_a_capitalised_instance_name() {
+        XCTAssertTrue(DeviceMatch.isKitchenSync(serviceName: "KitchenSync", txt: nil))
+        XCTAssertTrue(DeviceMatch.isKitchenSync(serviceName: "KSTouch-DFD0", txt: nil))
+    }
+
     /// Units already in the field have no TXT record and won't until they're reflashed. Breaking
     /// them would be a worse bug than the one being fixed.
     func test_the_existing_devices_still_match_on_hostname() {
