@@ -5,6 +5,19 @@ KitchenSync/X32Link fleet: discover units on the LAN, show live status, edit con
 per-output MIDI clock start/stop, push OTA updates. No Link SDK, no licensing question — plain
 HTTP + Bonjour against the protocol `KitchenSync/main/ks_web.cpp` already serves.
 
+This app is a **control plane**: it sends intent and renders reported state, and owns no
+musical time — the firmware owns that (a platform decision, not an app-local one).
+
+## Documentation
+
+- [`docs/architecture/overview.md`](docs/architecture/overview.md) — how this app is structured and why.
+- [`docs/architecture/firmware-contract.md`](docs/architecture/firmware-contract.md) — the client's view of the wire contract.
+- [`docs/decisions/`](docs/decisions/) — app-local decisions + pointers to the platform ADRs.
+- Platform source of truth lives in `link-devices`:
+  [architecture](https://github.com/ericdahl-dev/link-devices/tree/master/docs/architecture),
+  [ADRs](https://github.com/ericdahl-dev/link-devices/tree/master/docs/adr),
+  [HTTP contract](https://github.com/ericdahl-dev/link-devices/blob/master/docs/contracts/firmware-http-contract.md).
+
 ## Status
 
 Builds, runs, and is tested. **86 tests, 0 failures.**
