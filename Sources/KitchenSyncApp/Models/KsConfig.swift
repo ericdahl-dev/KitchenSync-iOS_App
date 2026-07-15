@@ -87,13 +87,23 @@ struct KsConfig: Decodable, Equatable {
     var wifi: [WifiSlot]
     var clock: [ClockOutputConfig]
 
+    /// The device's STORED free-run tempo, BPM. **`nil` means this build can't set a
+    /// tempo** — it's listener-only (X32Link), so `/config.json` omits `bpm`
+    /// (`link-devices` ESP-037, gated by `KsCaps.settable_tempo`), same capability rule
+    /// as `metronome`/`led`.
+    ///
+    /// This is the tempo you SET — distinct from `KsStatus.bpm`, the tempo the device is
+    /// currently CLOCKING (Link's, when a session is driving). The tempo control shows
+    /// this one; it doesn't jump around when Link takes over.
+    var tempo: Double?
+
     private enum CodingKeys: String, CodingKey {
         case clockOutEnabled = "clock_out", metronomeEnabled = "metronome"
         case metronomeAccent = "metro_accent", metronomeVolume = "metro_vol"
         case metronomeVoice = "metro_voice", ledEnabled = "led"
         case ledBrightness = "led_bright", ledMode = "led_mode", ledFade = "led_fade"
         case ledBeatColor = "led_beat", ledAccentColor = "led_accent"
-        case followBeatEnabled = "follow_beat", wifi, clock
+        case followBeatEnabled = "follow_beat", tempo = "bpm", wifi, clock
     }
 
     init(from decoder: Decoder) throws {
@@ -130,6 +140,7 @@ struct KsConfig: Decodable, Equatable {
         }
 
         followBeatEnabled = try c.decodeIfPresent(Bool.self, forKey: .followBeatEnabled)
+        tempo = try c.decodeIfPresent(Double.self, forKey: .tempo)   // ESP-037: nil = listener-only
         wifi = try c.decode([WifiSlot].self, forKey: .wifi)
         clock = try c.decode([ClockOutputConfig].self, forKey: .clock)
     }
@@ -294,6 +305,12 @@ extension KsConfig {
         case .outputPhase(let i, let v):        withOutput(i) { $0.phaseMilliBeats = v }
         case .outputSwing(let i, let v):        withOutput(i) { $0.swingMilliBeats = v }
         case .outputFollowsLink(let i, let v):  withOutput(i) { $0.followsLinkTransport = v }
+
+        // ESP-037: only reflect the set tempo if this device HAS a settable one. On a
+        // listener-only config (tempo == nil) a set is meaningless and must not conjure
+        // a value the device doesn't keep — the same nil-means-not-fitted rule as the
+        // capability sections above.
+        case .setTempo(let v):  if tempo != nil { tempo = v }
         }
     }
 
