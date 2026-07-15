@@ -17,9 +17,11 @@ import SwiftUI
 /// Link IS driving, the control says so, because a tempo you set that the device is
 /// currently ignoring is exactly the kind of silent lie this app keeps stamping out.
 struct TempoControl: View {
+    /// The tempo to SHOW — the effective one (what the box is clocking), so it follows
+    /// Link and never jumps. See `DeviceDetailViewModel.tempoDisplay`.
     let tempo: Double
-    /// True when a Link session is currently driving the clock (peers > 0). The set
-    /// tempo still persists and applies the moment Link leaves — but say who's in charge.
+    /// True when a Link session is driving. Link owns the tempo; the set controls stand
+    /// down and just report Link's value.
     let linkDriving: Bool
     let onSet: (Double) -> Void
 
@@ -29,10 +31,23 @@ struct TempoControl: View {
     @State private var editing = false
     @State private var draft = ""
     @State private var tapTimes: [Date] = []
+    /// Show an edit immediately instead of waiting a poll for `status.bpm` to catch up —
+    /// otherwise a ± tap looks dead for half a second, then snaps. Cleared once the
+    /// device's reported tempo converges on it.
+    @State private var optimistic: Double?
+
+    private var shown: Double { optimistic ?? tempo }
+    private var editable: Bool { !linkDriving }
 
     private func clamp(_ v: Double) -> Double { min(Self.maxBPM, max(Self.minBPM, v)) }
 
-    private func step(_ delta: Double) { onSet(clamp((tempo + delta).rounded())) }
+    private func commit(_ v: Double) {
+        let c = clamp(v)
+        optimistic = c
+        onSet(c)
+    }
+
+    private func step(_ delta: Double) { commit((shown + delta).rounded()) }
 
     /// Resolve taps to a BPM locally. Keep only taps within 2 s of each other (a gap
     /// starts a fresh count), average the intervals, and set once we have two taps.
@@ -46,12 +61,12 @@ struct TempoControl: View {
         for i in 1..<tapTimes.count { intervals.append(tapTimes[i].timeIntervalSince(tapTimes[i - 1])) }
         let avg = intervals.reduce(0, +) / Double(intervals.count)
         guard avg > 0 else { return }
-        onSet(clamp((60.0 / avg).rounded()))
+        commit((60.0 / avg).rounded())
     }
 
     private func commitDraft() {
         editing = false
-        if let v = Double(draft.replacingOccurrences(of: ",", with: ".")) { onSet(clamp(v)) }
+        if let v = Double(draft.replacingOccurrences(of: ",", with: ".")) { commit(v) }
     }
 
     var body: some View {
@@ -81,11 +96,12 @@ struct TempoControl: View {
                             .onSubmit(commitDraft)
                             .submitLabel(.done)
                     } else {
-                        Text(tempo.formatted(.number.precision(.fractionLength(0...1))))
+                        Text(shown.formatted(.number.precision(.fractionLength(0...1))))
                             .font(.ksDisplay(30))
-                            .foregroundStyle(KS.ink)
+                            .foregroundStyle(editable ? KS.ink : KS.mut)
                             .onTapGesture {
-                                draft = tempo.formatted(.number.precision(.fractionLength(0...1)))
+                                guard editable else { return }
+                                draft = shown.formatted(.number.precision(.fractionLength(0...1)))
                                 editing = true
                             }
                     }
@@ -108,10 +124,17 @@ struct TempoControl: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Tap tempo")
             }
+            .disabled(!editable)   // Link owns the tempo while it's driving
+            .opacity(editable ? 1 : 0.5)
         }
         .padding(14)
         .background(KS.panel, in: RoundedRectangle(cornerRadius: 12))
         .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(KS.line))
+        // The device caught up (its reported tempo reached our optimistic value, within
+        // rounding): drop the optimistic override and follow the device again.
+        .onChange(of: tempo) { _, new in
+            if let o = optimistic, abs(new - o) < 0.75 { optimistic = nil }
+        }
     }
 
     private func stepButton(_ label: String, _ action: @escaping () -> Void) -> some View {
