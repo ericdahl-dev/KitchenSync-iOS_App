@@ -28,6 +28,39 @@ final class DeviceDetailViewModelTests: XCTestCase {
      "launch":[0,1,2,0],"playing":true,"link_owns":false}
     """.data(using: .utf8)!
 
+    // ESP-037: the control shows the EFFECTIVE tempo, not the stored set value -- so it
+    // follows Link while a session drives, and there's no jump when Link leaves.
+    private static let configTempo150 = """
+    {"clock_out":true,"bpm":150.000,"wifi":[],"clock":[]}
+    """.data(using: .utf8)!
+    private static let statusLinkAt120 = """
+    {"bpm":120.0,"min":0.0,"peers":1,"usb":false,"tx":0,"fw":"2.2.0",
+     "follow_enabled":false,"follow_bpm":0.0,"follow_confidence":0.0,"follow_valid":false,
+     "launch":[0],"playing":false,"link_owns":true}
+    """.data(using: .utf8)!
+
+    func test_tempo_display_follows_the_effective_bpm_while_link_drives() async {
+        StubURLProtocol.routes["GET /config.json"] = .init(body: Self.configTempo150)
+        StubURLProtocol.routes["GET /status"] = .init(body: Self.statusLinkAt120)
+        let vm = makeVM()
+
+        await vm.loadConfig()
+        await vm.refreshStatus()
+
+        XCTAssertEqual(vm.tempoDisplay ?? 0, 120, accuracy: 0.1)   // Link's, not the stored 150
+        XCTAssertTrue(vm.tempoIsLinkDriven)
+    }
+
+    func test_tempo_display_uses_the_stored_value_before_the_first_poll() async {
+        StubURLProtocol.routes["GET /config.json"] = .init(body: Self.configTempo150)
+        let vm = makeVM()
+
+        await vm.loadConfig()   // no status yet
+
+        XCTAssertEqual(vm.tempoDisplay ?? 0, 150, accuracy: 0.1)
+        XCTAssertFalse(vm.tempoIsLinkDriven)
+    }
+
     func test_refresh_publishes_the_devices_status() async {
         StubURLProtocol.routes["GET /status"] = .init(body: Self.statusJSON)
         let vm = makeVM()

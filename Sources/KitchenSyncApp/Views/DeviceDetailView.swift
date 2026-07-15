@@ -37,10 +37,10 @@ struct DeviceDetailView: View {
 
                 // ESP-037: the set-tempo control, only when the device has a settable
                 // tempo (config.tempo != nil — a listener-only box omits it).
-                if let t = vm.config?.tempo {
+                if let t = vm.tempoDisplay {
                     TempoControl(
                         tempo: t,
-                        linkDriving: (vm.status?.peers ?? 0) > 0,
+                        linkDriving: vm.tempoIsLinkDriven,
                         onSet: { bpm in Task { await vm.apply(.setTempo(bpm)) } }
                     )
                 }
