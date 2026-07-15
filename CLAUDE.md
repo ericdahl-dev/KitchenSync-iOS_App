@@ -10,6 +10,10 @@ Available gstack skills:
 Companion app for the KitchenSync/X32Link fleet in [`link-devices`](https://github.com/ericdahl-dev/link-devices).
 Plain HTTP + Bonjour against the protocol `KitchenSync/main/ks_web.cpp` already serves.
 
+Architecture docs live in [`docs/architecture/`](docs/architecture/) and app-local decisions in
+[`docs/decisions/`](docs/decisions/); platform-wide decisions are the `link-devices` ADRs (this
+app follows and references them — it does not fork them).
+
 ## The firmware is the source of truth
 
 Field names, value grammars, and option strings are copied from the firmware, not invented.
