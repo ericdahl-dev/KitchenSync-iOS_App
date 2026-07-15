@@ -31,6 +31,10 @@ struct TempoControl: View {
     @State private var editing = false
     @State private var draft = ""
     @State private var tapTimes: [Date] = []
+    /// The decimalPad keyboard has NO return key, so `.onSubmit` never fires — a typed
+    /// tempo could never be committed. Focus drives it instead: a "Set" button in the
+    /// keyboard toolbar, and commit-on-dismiss when you tap away.
+    @FocusState private var fieldFocused: Bool
     /// Show an edit immediately instead of waiting a poll for `status.bpm` to catch up —
     /// otherwise a ± tap looks dead for half a second, then snaps. Cleared once the
     /// device's reported tempo converges on it.
@@ -65,8 +69,17 @@ struct TempoControl: View {
     }
 
     private func commitDraft() {
+        guard editing else { return }   // avoid a double-commit (Set button + focus-loss)
         editing = false
+        fieldFocused = false
         if let v = Double(draft.replacingOccurrences(of: ",", with: ".")) { commit(v) }
+    }
+
+    private func beginEdit() {
+        guard editable else { return }
+        draft = shown.formatted(.number.precision(.fractionLength(0...1)))
+        editing = true
+        fieldFocused = true
     }
 
     var body: some View {
@@ -93,17 +106,15 @@ struct TempoControl: View {
                             .multilineTextAlignment(.center)
                             .font(.ksDisplay(30))
                             .foregroundStyle(KS.ink)
-                            .onSubmit(commitDraft)
-                            .submitLabel(.done)
+                            .focused($fieldFocused)
+                            .onChange(of: fieldFocused) { _, focused in
+                                if !focused { commitDraft() }   // tapped away → set it
+                            }
                     } else {
                         Text(shown.formatted(.number.precision(.fractionLength(0...1))))
                             .font(.ksDisplay(30))
                             .foregroundStyle(editable ? KS.ink : KS.mut)
-                            .onTapGesture {
-                                guard editable else { return }
-                                draft = shown.formatted(.number.precision(.fractionLength(0...1)))
-                                editing = true
-                            }
+                            .onTapGesture(perform: beginEdit)
                     }
                 }
                 .frame(maxWidth: .infinity)
@@ -130,6 +141,14 @@ struct TempoControl: View {
         .padding(14)
         .background(KS.panel, in: RoundedRectangle(cornerRadius: 12))
         .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(KS.line))
+        // The decimalPad has no return key — give the number a way to commit.
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Set", action: commitDraft)
+                    .disabled(!editing)
+            }
+        }
         // The device caught up (its reported tempo reached our optimistic value, within
         // rounding): drop the optimistic override and follow the device again.
         .onChange(of: tempo) { _, new in
