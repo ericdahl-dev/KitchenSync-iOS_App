@@ -35,6 +35,16 @@ struct DeviceDetailView: View {
                 meterBridge
                 masterTransport
 
+                // ESP-037: the set-tempo control, only when the device has a settable
+                // tempo (config.tempo != nil — a listener-only box omits it).
+                if let t = vm.config?.tempo {
+                    TempoControl(
+                        tempo: t,
+                        linkDriving: (vm.status?.peers ?? 0) > 0,
+                        onSet: { bpm in Task { await vm.apply(.setTempo(bpm)) } }
+                    )
+                }
+
                 if let failure = vm.liveEditFailure {
                     liveEditBanner(failure)
                 }

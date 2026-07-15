@@ -25,6 +25,12 @@ enum KsLiveEdit {
     case outputSwing(index: Int, Int)
     case outputFollowsLink(index: Int, Bool)
 
+    /// ESP-037: the device-global free-run tempo, BPM. Drives the clock when the device
+    /// is solo; a Link session still wins. Tap, numeric entry, and the ± steppers ALL
+    /// resolve to this one number — tap is computed in the app (local timing, no WiFi
+    /// jitter), never sent as tap events over the network.
+    case setTempo(Double)
+
     /// The one `(key, value)` pair this edit POSTs. `/live` is a PARTIAL patch
     /// (`ks_form_apply` on the firmware) — fields not present keep their
     /// current value, so sending exactly one pair per edit is correct, not a
@@ -47,9 +53,15 @@ enum KsLiveEdit {
         case .outputPhase(let i, let v): return ("clk\(i)_phase", String(v))
         case .outputSwing(let i, let v): return ("clk\(i)_swing", String(v))
         case .outputFollowsLink(let i, let v): return ("clk\(i)_follow", boolValue(v))
+        case .setTempo(let v): return ("bpm", bpmValue(v))
         }
     }
 
     private func boolValue(_ v: Bool) -> String { v ? "1" : "0" }
     private func colorValue(_ v: UInt32) -> String { String(format: "#%06X", v & 0xFFFFFF) }
+    /// Milli-BPM precision, locale-independent (the "." must not become a "," on a
+    /// European phone — the firmware parses with atof, which is C-locale).
+    private func bpmValue(_ v: Double) -> String {
+        String(format: "%.3f", locale: Locale(identifier: "en_US_POSIX"), v)
+    }
 }
