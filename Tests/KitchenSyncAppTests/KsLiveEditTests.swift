@@ -37,4 +37,13 @@ final class KsLiveEditTests: XCTestCase {
         XCTAssertTrue(KsLiveEdit.outputSwing(index: 0, 125).formField == ("clk0_swing", "125"))
         XCTAssertTrue(KsLiveEdit.outputFollowsLink(index: 1, false).formField == ("clk1_follow", "0"))
     }
+
+    // ESP-037: the device-global free-run tempo. `bpm`, decimal, the one number tap /
+    // numeric / +- all resolve to. `ks_config_set` parses it with atof, so fractional
+    // BPM (from tap) survives.
+    func test_set_tempo_posts_the_bpm_field() {
+        let (key, value) = KsLiveEdit.setTempo(128.5).formField
+        XCTAssertEqual(key, "bpm")
+        XCTAssertEqual(Double(value) ?? 0, 128.5, accuracy: 0.001)
+    }
 }
