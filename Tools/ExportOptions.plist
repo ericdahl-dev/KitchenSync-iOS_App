@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Export options for App Store Connect / TestFlight distribution (see Tools/build-testflight.sh).
+  method app-store-connect is Xcode 15+'s name for what used to be "app-store".
+  manageAppVersionAndBuildNumber is false so the build number we pass on the archive command
+  (git commit count) is the one that ships -- Xcode otherwise silently rewrites it.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>method</key>
+    <string>app-store-connect</string>
+    <key>teamID</key>
+    <string>5HR8E5CWR7</string>
+    <key>signingStyle</key>
+    <string>automatic</string>
+    <key>uploadSymbols</key>
+    <true/>
+    <key>manageAppVersionAndBuildNumber</key>
+    <false/>
+    <key>destination</key>
+    <string>export</string>
+</dict>
+</plist>

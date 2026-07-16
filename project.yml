@@ -29,6 +29,23 @@ targets:
         NSLocalNetworkUsageDescription: KitchenSync finds your devices on the local network to show their status and control their MIDI clock.
         NSBonjourServices:
           - _http._tcp
+        # Export compliance: the app talks plain HTTP to local devices and uses only the
+        # OS's standard TLS — both exempt — so it declares NO non-exempt encryption. This
+        # pre-answers the App Store Connect compliance question so each build processes
+        # straight through. Revisit if the app ever adds its own crypto.
+        ITSAppUsesNonExemptEncryption: false
+        # Required for App Store upload: an iPad-capable bundle (TARGETED_DEVICE_FAMILY 1,2)
+        # MUST declare orientations or ingestion rejects it (error 90474 — iPad multitasking).
+        # iPhone gets the usual three (no upside-down); iPad gets all four.
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.ericdahl.kitchensync
