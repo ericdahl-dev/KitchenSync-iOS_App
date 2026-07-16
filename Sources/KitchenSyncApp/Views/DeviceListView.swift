@@ -6,6 +6,7 @@ import SwiftUI
 struct DeviceListView: View {
     @StateObject private var vm = DeviceListViewModel()
     @State private var addingDevice = false
+    @State private var settingUpDevice = false
 
     /// The manual devices, as their own collection. The two sections are not just
     /// cosmetic: `removeManualDevices(at:)` takes offsets into the FILTERED manual
@@ -41,6 +42,9 @@ struct DeviceListView: View {
             }
             .sheet(isPresented: $addingDevice) {
                 AddDeviceView { vm.addManualDevice(host: $0) }
+            }
+            .sheet(isPresented: $settingUpDevice) {
+                SetupDeviceView()
             }
         }
         .task { vm.start() }
@@ -143,7 +147,10 @@ struct DeviceListView: View {
                 .foregroundStyle(KS.mut)
                 .multilineTextAlignment(.center)
 
-            Button("Add by IP") { addingDevice = true }
+            // First-run: a fresh device isn't on the LAN yet (it's on its own setup AP), so
+            // discovery can't find it — the user needs a path to set it up, not just "add by
+            // IP". This is the affordance that meets "the app sets up my device" (T-026).
+            Button("Set up a new device") { settingUpDevice = true }
                 .font(.ksDisplay(14))
                 .tracking(1.4)
                 .foregroundStyle(KS.onInk)
@@ -151,6 +158,10 @@ struct DeviceListView: View {
                 .padding(.vertical, 12)
                 .background(KS.ledFill, in: Capsule())
                 .padding(.top, 6)
+
+            Button("Add by IP") { addingDevice = true }
+                .font(.ksMono(12))
+                .foregroundStyle(KS.mut)
         }
         .padding(32)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
