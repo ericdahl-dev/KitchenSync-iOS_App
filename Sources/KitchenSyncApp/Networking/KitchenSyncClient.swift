@@ -82,6 +82,15 @@ struct KitchenSyncClient {
         try await postForm("/save", fields: config.saveFormFields(wifiEdits: wifiEdits))
     }
 
+    /// T-026: first-run WiFi provisioning. POSTs ONLY the credentials to `/save` — a partial
+    /// form (no `full_form`), so the firmware leaves every other setting alone and this can
+    /// never clobber a device's config while merely joining it to a network. The device stores
+    /// the credentials and reboots to join. Point the client at `SetupNetwork.host` — the
+    /// device's own SoftAP — for this, since it isn't on the LAN yet.
+    func provisionWifi(ssid: String, password: String) async throws {
+        try await postForm("/save", fields: ["wifi_ssid": ssid, "wifi_pass": password])
+    }
+
     /// POST /transport?out=N|all&play=1|0 — quantized Start/Stop (ESP-011).
     /// Takes effect on the next bar line; poll `/status.launch[N]` to watch it
     /// arm, then run.
