@@ -96,14 +96,16 @@ final class DeviceDetailViewModel: ObservableObject {
             status = fresh
             statusAvailability = .available
             isRebooting = false     // the device answering IS the signal
-        } catch is DecodingError {
-            // It's there. We just can't read it.
-            statusAvailability = .unsupported
         } catch {
-            status = nil
-            statusAvailability = .unreachable
-            // A failed poll while rebooting is the device still being down — which is
-            // exactly what we're waiting out. Only an ANSWER clears that flag.
+            switch DeviceFault.classify(error) {
+            case .undecodable:
+                statusAvailability = .unsupported   // it's there; we just can't read it
+            case .notFound, .rejected, .unreachable:
+                status = nil
+                statusAvailability = .unreachable
+                // A failed poll while rebooting is the device still being down — which is
+                // exactly what we're waiting out. Only an ANSWER clears that flag.
+            }
         }
     }
 
@@ -131,13 +133,14 @@ final class DeviceDetailViewModel: ObservableObject {
         do {
             config = try await client.fetchConfig()
             configAvailability = .available
-        } catch KitchenSyncClientError.httpStatus(404) {
-            // The one case we can attribute confidently.
-            config = nil
-            configAvailability = .unsupportedByFirmware
         } catch {
             config = nil
-            configAvailability = .failed
+            switch DeviceFault.classify(error) {
+            case .notFound:
+                configAvailability = .unsupportedByFirmware   // the one case we attribute confidently
+            case .undecodable, .rejected, .unreachable:
+                configAvailability = .failed
+            }
         }
     }
 
@@ -176,12 +179,15 @@ final class DeviceDetailViewModel: ObservableObject {
             try await client.postLive(edit)
             config?.apply(edit)
             liveEditFailure = nil
-        } catch KitchenSyncClientError.httpStatus(404) {
-            liveEditFailure = .unsupportedByFirmware
-        } catch KitchenSyncClientError.httpStatus {
-            liveEditFailure = .rejectedByDevice
         } catch {
-            liveEditFailure = .unreachable
+            switch DeviceFault.classify(error) {
+            case .notFound:
+                liveEditFailure = .unsupportedByFirmware
+            case .rejected:
+                liveEditFailure = .rejectedByDevice   // it answered and refused — about the value
+            case .undecodable, .unreachable:
+                liveEditFailure = .unreachable
+            }
         }
     }
 

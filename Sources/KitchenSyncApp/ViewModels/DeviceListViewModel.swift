@@ -129,10 +129,13 @@ final class DeviceListViewModel: ObservableObject {
                     let client = KitchenSyncClient(host: device.host, session: session)
                     do {
                         return (device.id, .ok(try await client.fetchStatus()))
-                    } catch is DecodingError {
-                        return (device.id, .undecodable)
                     } catch {
-                        return (device.id, .noAnswer)
+                        switch DeviceFault.classify(error) {
+                        case .undecodable:
+                            return (device.id, .undecodable)   // it's THERE, just unreadable
+                        case .notFound, .rejected, .unreachable:
+                            return (device.id, .noAnswer)
+                        }
                     }
                 }
             }
