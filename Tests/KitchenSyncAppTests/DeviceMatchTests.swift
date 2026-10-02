@@ -21,7 +21,7 @@ final class DeviceMatchTests: XCTestCase {
     /// and X32Link use. hasPrefix is case-sensitive, so `"KitchenSync".hasPrefix(
     /// "kitchensync")` is false and the P4 was invisible. A Bonjour name's case is not
     /// meaningful; the match must be case-insensitive.
-    func test_the_p4_is_matched_despite_a_capitalised_instance_name() {
+    func test_the_p4_is_matched_despite_a_capitalized_instance_name() {
         XCTAssertTrue(DeviceMatch.isKitchenSync(serviceName: "KitchenSync", txt: nil))
         XCTAssertTrue(DeviceMatch.isKitchenSync(serviceName: "KSTouch-DFD0", txt: nil))
     }

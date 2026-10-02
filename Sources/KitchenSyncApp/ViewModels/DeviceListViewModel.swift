@@ -64,7 +64,7 @@ final class DeviceListViewModel: ObservableObject {
         }
         discovery.start()
         pollTask = Task {
-            while !Task.isCancelled {
+            while !Task.isCancelled {  // spelling: ok (Apple API)
                 await refreshAll()
                 try? await Task.sleep(for: .seconds(2))
             }

@@ -29,7 +29,7 @@ final class DeviceDetailViewModel: ObservableObject {
     func start() {
         guard pollTask == nil else { return }
         pollTask = Task { [weak self] in
-            while !Task.isCancelled {
+            while !Task.isCancelled {  // spelling: ok (Apple API)
                 await self?.refreshStatus()
                 try? await Task.sleep(for: self?.pollInterval ?? .seconds(1))
             }

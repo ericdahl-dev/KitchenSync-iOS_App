@@ -49,9 +49,9 @@ final class DiscoveryStatusTests: XCTestCase {
         XCTAssertEqual(DiscoveryStatus(browserState: .failed(.posix(.ENETDOWN))), .failed)
     }
 
-    func test_setup_and_cancelled_are_not_errors() {
+    func test_setup_and_canceled_are_not_errors() {
         XCTAssertEqual(DiscoveryStatus(browserState: .setup), .starting)
-        XCTAssertEqual(DiscoveryStatus(browserState: .cancelled), .stopped)
+        XCTAssertEqual(DiscoveryStatus(browserState: .cancelled), .stopped)  // spelling: ok (NWBrowser.State, Apple API)
     }
 
     /// Only `permissionDenied` is the user's to fix. Everything else is ours or the

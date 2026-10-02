@@ -29,7 +29,7 @@ exactly the things this app exists to fix.
 ```
 
 Eight colors, three faces. Near-black background, one lime LED, one amber, one warm off-white
-ink, one grey. Everything else in both files is a tint of those.
+ink, one gray. Everything else in both files is a tint of those.
 
 ### The signature moves, in order of how much they matter
 
@@ -62,7 +62,7 @@ ten uses. Port it.
 .write:active{transform:translateY(4px);box-shadow:0 1px 0 #5e8a16}
 ```
 
-A key with 6px of travel that bottoms out when you press it. Labelled **Write & Reboot**.
+A key with 6px of travel that bottoms out when you press it. Labeled **Write & Reboot**.
 
 **4. The transport toggle** (`ks_web.cpp:107-113`) — one control, three states, state *is* the
 label and the color:
@@ -74,7 +74,7 @@ label and the color:
 .tgl:disabled{opacity:.45;cursor:not-allowed}
 ```
 
-**Stopped is not neutral grey — it's an ember**: dark maroon `#2A1512 → #1C0F0D` with salmon
+**Stopped is not neutral gray — it's an ember**: dark maroon `#2A1512 → #1C0F0D` with salmon
 `#FF7A6B` text. That's a good decision. It reads "loaded, not firing," and it distinguishes
 stopped from disabled (which is just `opacity:.45`).
 
@@ -148,7 +148,7 @@ All three faces are SIL OFL 1.1; bundle them and keep the identity 1:1.
 | Mono | DM Mono 400/500 | bundle; fallback `.system(design: .monospaced)` | every value, every field, every pill |
 | Segment | DSEG7 Classic | bundle — **required** for the ghost trick | the BPM readout only |
 
-If DSEG7 can't be bundled, fall back to DM Mono heavy and **delete the ghost layer**. A grey
+If DSEG7 can't be bundled, fall back to DM Mono heavy and **delete the ghost layer**. A gray
 duplicate of a non-segmented font doesn't read as unlit segments; it reads as a rendering bug.
 
 Two non-negotiables: **`.monospacedDigit()` on every number** (a 3-digit BPM must not reflow a
@@ -191,8 +191,8 @@ in display 800 at 17pt, `.tracking(2)`, uppercase.
 
 **The three states, ported literally:**
 
-- `.stopped` — `KS.emberFill`, 1pt `KS.line` stroke, `KS.ember` label. Keep the ember. Grey would
-  be the obvious choice and it's the wrong one: grey is what *disabled* looks like, and a stopped
+- `.stopped` — `KS.emberFill`, 1pt `KS.line` stroke, `KS.ember` label. Keep the ember. Gray would
+  be the obvious choice and it's the wrong one: gray is what *disabled* looks like, and a stopped
   output is the opposite of disabled — it's cocked.
 - `.armed` — `KS.amberFill`, **1.5pt** `KS.amber` stroke, `KS.amber` label, **and it blinks.**
 - `.running` — `KS.ledOn`, `KS.ledEdge` stroke, `KS.onInk` label, plus
@@ -552,7 +552,7 @@ press:
 .animation(.easeOut(duration: 0.06), value: pressed)
 ```
 
-Labelled, in the device's own words: **WRITE & REBOOT**. Behind an alert that **names the
+Labeled, in the device's own words: **WRITE & REBOOT**. Behind an alert that **names the
 device** — `"Write & Reboot kitchensync-a4f2?"` — because you probably have three of them on the
 bench.
 
@@ -609,11 +609,11 @@ genuinely dark, which is exactly what the hardware is doing), everything else di
 `.opacity(0.35)`, and a mono caption reads `REBOOTING…`. Polling continues. The instant `/status`
 answers, snap back and the beat dot starts flashing. This is precisely what the device's own page
 does — `send_result(..., reboot: true)` renders `ui_result_page` with poll-until-alive so the
-browser isn't stranded on `/save` (`ks_web.cpp:560-563, 611`). Same behaviour, ported.
+browser isn't stranded on `/save` (`ks_web.cpp:560-563, 611`). Same behavior, ported.
 
 **Firmware sheet (T-008), briefly:** same reboot vocabulary, same consequence band, plus the
 reassurance the task asks for — *"A failed flash does not brick the device. Dual-slot OTA means it
-stays on the current firmware."* — and the target acknowledgement, since nothing in the client
+stays on the current firmware."* — and the target acknowledgment, since nothing in the client
 validates the binary against the chip. Progress in `KS.ledOn` on `KS.panel`. `.fileImporter`
 limited to `.data` with a `.bin` extension check.
 

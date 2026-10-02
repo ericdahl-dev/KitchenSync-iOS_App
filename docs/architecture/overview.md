@@ -36,7 +36,7 @@ Models (pure)                KsStatus, KsConfig, KsLiveEdit, TransportLaunchStat
                              KsStatusTempoSource, TransportAppearance, DeviceMatch …
 ```
 
-- **Models are pure and testable.** State→appearance mapping, tempo-source labelling,
+- **Models are pure and testable.** State→appearance mapping, tempo-source labeling,
   transport summary, and device-match logic are pure functions with unit tests —
   never buried in a view.
 - **The firmware is the source of truth for the models.** Field names, value grammars,

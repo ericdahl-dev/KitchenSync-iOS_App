@@ -16,7 +16,7 @@ enum SetupNetwork {
     ///   - `KitchenSync-Setup` — the P4 (`wifi_link.c` `AP_SSID`)
     ///   - `KSTouch-Config`    — the Touch (`KitchenSyncTouch.ino` `WiFi.softAP`)
     /// Matched as a **family of prefixes**, not one string, so a new product's setup AP is
-    /// recognised without an app change — the same reason `DeviceMatch` matches host prefixes.
+    /// recognized without an app change — the same reason `DeviceMatch` matches host prefixes.
     static let ssidPrefixes = ["kitchensync-setup", "kstouch-config"]
 
     /// True if `ssid` is one of our devices' setup APs. Case-insensitive: a WiFi SSID's case is

@@ -26,7 +26,7 @@ enum DeviceMatch {
         return matchesKnownHostname(serviceName)
     }
 
-    /// The FALLBACK. A heuristic, and deliberately labelled as one — it exists to keep un-updated
+    /// The FALLBACK. A heuristic, and deliberately labeled as one — it exists to keep un-updated
     /// units working, not because it is correct.
     ///
     /// The firmware advertises generic `_http._tcp` with no TXT record, so the hostname is all a

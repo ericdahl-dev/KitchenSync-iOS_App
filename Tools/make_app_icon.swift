@@ -110,7 +110,7 @@ ctx.setMiterLimit(10)
 // concentric banding, a contour map. Neither is a glow, because a glow FALLS OFF and
 // a stroke does not.
 //
-// A shadow does. Zero offset + a blur radius + the LED colour is a real Gaussian
+// A shadow does. Zero offset + a blur radius + the LED color is a real Gaussian
 // bloom around the path. Two passes, because one is too timid to see on charcoal.
 for (blur, alpha) in [(S * 0.075, 0.75), (S * 0.030, 0.85)] as [(Double, Double)] {
     ctx.saveGState()

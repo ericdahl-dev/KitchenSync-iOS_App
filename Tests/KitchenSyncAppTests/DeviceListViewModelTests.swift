@@ -113,7 +113,7 @@ final class DeviceListViewModelTests: XCTestCase {
 
     /// One dropped request on a busy LAN is NOISE, not a disconnection. At a 2s poll,
     /// flapping a red badge on every missed packet would be worse than the old
-    /// behaviour. A single miss keeps the device reachable and keeps its last status.
+    /// behavior. A single miss keeps the device reachable and keeps its last status.
     func test_a_single_missed_poll_does_not_declare_the_device_gone() async {
         StubURLProtocol.reset()
         StubURLProtocol.routes["GET /status"] = .init(body: Self.statusJSON)

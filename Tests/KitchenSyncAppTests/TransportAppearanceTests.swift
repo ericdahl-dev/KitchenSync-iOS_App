@@ -17,7 +17,7 @@ final class TransportAppearanceTests: XCTestCase {
         let a = TransportAppearance.appearance(for: .stopped, linkOwned: false)
 
         XCTAssertEqual(a.label, "STOPPED")
-        // Ember, not grey: grey is what DISABLED looks like, and a stopped
+        // Ember, not gray: gray is what DISABLED looks like, and a stopped
         // output is the opposite of disabled — it's loaded and ready to fire.
         XCTAssertEqual(a.face, .ember)
         XCTAssertFalse(a.blinks)
@@ -27,7 +27,7 @@ final class TransportAppearanceTests: XCTestCase {
     /// The one that matters. Play is quantized — a tap arms the output and the
     /// bar line may be most of a bar away. The blink is the ONLY evidence the
     /// tap registered. The device's own web UI gets this wrong: its `.tgl.arming`
-    /// is a static amber with a 150ms colour transition and no motion at all.
+    /// is a static amber with a 150ms color transition and no motion at all.
     func test_armed_is_amber_and_blinks() {
         let a = TransportAppearance.appearance(for: .armed, linkOwned: false)
 

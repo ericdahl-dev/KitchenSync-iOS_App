@@ -1,10 +1,10 @@
 import XCTest
 @testable import KitchenSyncApp
 
-/// T-026: a device in SoftAP setup mode isn't on the LAN, so the app recognises it by its
+/// T-026: a device in SoftAP setup mode isn't on the LAN, so the app recognizes it by its
 /// setup SSID (to guide/join the AP) and reaches it at the fixed setup address.
 final class SetupNetworkTests: XCTestCase {
-    func test_the_fleet_setup_aps_are_recognised() {
+    func test_the_fleet_setup_aps_are_recognized() {
         XCTAssertTrue(SetupNetwork.isSetupAP(ssid: "KitchenSync-Setup"))  // the P4
         XCTAssertTrue(SetupNetwork.isSetupAP(ssid: "KSTouch-Config"))     // the Touch
     }

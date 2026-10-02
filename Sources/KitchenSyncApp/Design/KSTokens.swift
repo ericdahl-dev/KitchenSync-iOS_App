@@ -47,7 +47,7 @@ enum KS {
     /// Text drawn ON lime.
     static let onInk   = Color(hex: 0x0A0D07)
     static let amber   = Color(hex: 0xFF9D3B)
-    /// The stopped label — salmon, not grey.
+    /// The stopped label — salmon, not gray.
     static let ember   = Color(hex: 0xFF7A6B)
 
     static let ledFill   = LinearGradient(colors: [Color(hex: 0xCAFF5A), Color(hex: 0x9BE32A)],
@@ -75,7 +75,7 @@ enum KS {
 // (the BPM readout). All three are SIL OFL 1.1 and SHOULD be bundled to keep
 // the identity 1:1. They are not bundled yet — these are the documented
 // fallbacks. Note the design direction's rule: if DSEG7 is absent, the tempo
-// glass must DROP its ghost layer, because a grey duplicate of a non-segmented
+// glass must DROP its ghost layer, because a gray duplicate of a non-segmented
 // font reads as a rendering bug rather than unlit segments.
 
 extension Font {

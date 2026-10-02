@@ -10,7 +10,7 @@ import SwiftUI
 /// **No surface ever mixes live and reboot controls.** The device's own web page puts the metronome
 /// ENABLE toggle and the metro-accent toggle forty pixels apart, as the identical component, in the
 /// same box — one applies instantly and the other restarts the device mid-set, with nothing on
-/// screen to tell them apart. Better labelling would not have fixed that. Not being adjacent does.
+/// screen to tell them apart. Better labeling would not have fixed that. Not being adjacent does.
 ///
 /// Sections appear only for hardware the device actually reports (`link-devices` ESP-030): no
 /// speaker, no click section; no strip, no LED section. Solder a strip onto a Touch and flip one
@@ -162,7 +162,7 @@ struct DeviceLiveSettingsSheet: View {
             }
 
             KSField(prefix: "BEAT") {
-                ColorPicker("Beat colour", selection: Binding(
+                ColorPicker("Beat color", selection: Binding(
                     get: { Color(hex: l.beatColor) },
                     set: { onEdit(.ledBeatColor($0.rgb24)) }
                 ), supportsOpacity: false)
@@ -171,7 +171,7 @@ struct DeviceLiveSettingsSheet: View {
             }
 
             KSField(prefix: "ACCENT") {
-                ColorPicker("Accent colour", selection: Binding(
+                ColorPicker("Accent color", selection: Binding(
                     get: { Color(hex: l.accentColor) },
                     set: { onEdit(.ledAccentColor($0.rgb24)) }
                 ), supportsOpacity: false)

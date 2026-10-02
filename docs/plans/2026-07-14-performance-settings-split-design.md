@@ -40,7 +40,7 @@ Applies instantly; the field pulses lime to prove it.
 
 - Per output: enable, CABLE, RATE, follow-Link
 - Click: volume, voice, accent — **only if a speaker is fitted**
-- LED: brightness, mode, fade, colours — **only if a strip is wired**
+- LED: brightness, mode, fade, colors — **only if a strip is wired**
 - Diagnostics (tick / phase health)
 - A door at the bottom → **Device Setup**
 
@@ -64,7 +64,7 @@ this app exists to fix, and it is fixed *structurally*, not with labels:
   declared reboot-required.
 
 Merging everything into one Settings sheet would have re-created that adjacency with better
-labelling. Better labelling is not the same as impossible.
+labeling. Better labeling is not the same as impossible.
 
 ## Capability still drives visibility
 
