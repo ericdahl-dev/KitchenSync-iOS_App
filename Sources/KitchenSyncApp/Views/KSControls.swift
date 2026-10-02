@@ -214,7 +214,7 @@ struct KSLiveSlider: View {
                             debounce?.cancel()
                             debounce = Task {
                                 try? await Task.sleep(for: .milliseconds(60))
-                                guard !Task.isCancelled else { return }
+                                guard !Task.isCancelled else { return }  // spelling: ok (Apple API)
                                 onCommit(Int(new.rounded()))
                             }
                         }
@@ -234,7 +234,7 @@ struct KSLiveSlider: View {
         // Let the device win once it has answered — never leave a slider showing a
         // number the device doesn't have.
         .onChange(of: value) { _, new in
-            if debounce?.isCancelled ?? true { local = nil }
+            if debounce?.isCancelled ?? true { local = nil }  // spelling: ok (Apple API)
             _ = new
         }
         .accessibilityLabel(label)

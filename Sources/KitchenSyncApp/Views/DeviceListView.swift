@@ -251,7 +251,7 @@ private struct DeviceRow: View {
                 // "0 PEERS" for a device that isn't answering is a lie dressed as
                 // a measurement. If there's no status, we don't know the peer count.
                 // And "NO SIGNAL" is wrong for a device that's answering fine — it's
-                // signalling perfectly, in a dialect we can't read.
+                // signaling perfectly, in a dialect we can't read.
                 Text(peersCaption)
                     .font(.ksMono(10.5))
                     .tracking(1.6)

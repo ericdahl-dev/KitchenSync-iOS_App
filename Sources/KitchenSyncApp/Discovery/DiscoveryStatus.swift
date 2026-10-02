@@ -30,7 +30,7 @@ enum DiscoveryStatus: Equatable {
     /// The browser died. `NWBrowser` does not come back from `.failed` on its own —
     /// somebody has to restart it.
     case failed
-    /// Cancelled, because we asked.
+    /// Canceled, because we asked.
     case stopped
 
     /// `kDNSServiceErr_PolicyDenied`. The one signal that means "the user has to act".
@@ -42,7 +42,7 @@ enum DiscoveryStatus: Equatable {
             self = .starting
         case .ready:
             self = .browsing
-        case .cancelled:
+        case .cancelled:  // spelling: ok (NWBrowser.State, Apple API)
             self = .stopped
         case .waiting(let error):
             // A permission denial ARRIVES AS A WAIT, which is precisely the trap: it looks

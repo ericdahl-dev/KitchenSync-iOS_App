@@ -67,7 +67,7 @@ final class KitchenSyncDiscovery {
     }
 
     func stop() {
-        browser?.stateUpdateHandler = nil   // cancelling is not news; don't report .stopped
+        browser?.stateUpdateHandler = nil   // canceling is not news; don't report .stopped
         browser?.cancel()
         browser = nil
     }

@@ -8,7 +8,7 @@ import UniformTypeIdentifiers
 /// the device — the firmware doesn't expose its chip target, so the app cannot check.
 /// A filename convention is not a safety mechanism, but an unlabelled "Flash" button
 /// is worse. So the confirmation names the device and requires an explicit
-/// acknowledgement of the target. The proper fix is firmware-side (expose the target
+/// acknowledgment of the target. The proper fix is firmware-side (expose the target
 /// in /status or /update) and belongs with T-011.
 ///
 /// The reassurance is real and worth stating plainly: dual-slot OTA (P4-017) means a
@@ -40,7 +40,7 @@ struct FirmwareUpdateSheet: View {
                     picker
 
                     if binary != nil {
-                        targetAcknowledgement
+                        targetAcknowledgment
                     }
 
                     if let failure {
@@ -124,7 +124,7 @@ struct FirmwareUpdateSheet: View {
 
     /// The app cannot verify the chip target, so the user must. Not a rubber stamp —
     /// it's the only gate that exists.
-    private var targetAcknowledgement: some View {
+    private var targetAcknowledgment: some View {
         HStack(alignment: .top, spacing: 10) {
             Toggle("", isOn: $acknowledgedTarget)
                 .toggleStyle(KSSwitchStyle())

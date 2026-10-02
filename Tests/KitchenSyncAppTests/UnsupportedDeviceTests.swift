@@ -72,7 +72,7 @@ final class UnsupportedDeviceTests: XCTestCase {
         XCTAssertEqual(vm.reachability(of: "kstouch-dfd0.local"), .unsupported)
     }
 
-    /// And the T-010 behaviour still holds: a device that genuinely stops answering IS unreachable.
+    /// And the T-010 behavior still holds: a device that genuinely stops answering IS unreachable.
     func test_a_device_that_stops_answering_is_still_unreachable() async {
         StubURLProtocol.routes["GET /status"] = .init(body: Self.realTouchStatusJSON)
         let vm = makeListVM()

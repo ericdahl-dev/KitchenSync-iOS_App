@@ -5,7 +5,7 @@ import SwiftUI
 /// The web UI draws a 7-segment display with an all-segments-lit "188.8" ghost
 /// behind the live value, imitating the unlit segments of a real LED display.
 /// That trick REQUIRES the DSEG7 Classic face. It isn't bundled yet, so per the
-/// design direction the ghost layer is deliberately DROPPED: a grey duplicate of
+/// design direction the ghost layer is deliberately DROPPED: a gray duplicate of
 /// a non-segmented font doesn't read as unlit segments, it reads as a rendering
 /// bug. Bundle DSEG7 and the ghost comes back — see `ghost` below.
 struct KSGlass: View {
@@ -45,10 +45,10 @@ struct KSGlass: View {
     }
 }
 
-/// The `.pwr` LED — breathes while the device is answering, goes dead grey when
+/// The `.pwr` LED — breathes while the device is answering, goes dead gray when
 /// it isn't. The web page never needs an offline state; the app needs one
 /// constantly, and it's the first thing a user checks. (Proper unreachable
-/// modelling — consecutive-failure thresholds — is T-010.)
+/// modeling — consecutive-failure thresholds — is T-010.)
 struct KSPowerLED: View {
     let alive: Bool
 

@@ -86,7 +86,7 @@ final class RealTouchStatusTests: XCTestCase {
     /// THE BUG, reduced to one assertion.
     ///
     /// `link_owns` is a LIVE claim. `ks_status.h`: "when link_owns is true the manual
-    /// PLAY/STOP buttons are ignored, so the UI greys them". The app obeys that contract
+    /// PLAY/STOP buttons are ignored, so the UI grays them". The app obeys that contract
     /// — `TransportAppearance.acceptsTap = !linkOwned` — and so it refused to even SEND
     /// the tap.
     ///
@@ -107,7 +107,7 @@ final class RealTouchStatusTests: XCTestCase {
                                                     linkOwned: s.linkOwnsTransport)
 
         XCTAssertTrue(button.acceptsTap,
-                      "the device obeys play/stop — a UI that greys the button is lying to the user")
+                      "the device obeys play/stop — a UI that grays the button is lying to the user")
     }
 
     /// ...and it must be able to stop it again.
@@ -127,14 +127,14 @@ final class RealTouchStatusTests: XCTestCase {
     /// then `link_owns:true` is true, its manual buttons really are ignored, and greying
     /// them is correct: a button that does nothing is worse than a button that says so.
     /// The Touch's mistake was CLAIMING that while obeying anyway.
-    func test_a_device_that_really_does_defer_to_link_still_greys_the_button() throws {
+    func test_a_device_that_really_does_defer_to_link_still_grays_the_button() throws {
         let s = try JSONDecoder().decode(KsStatus.self, from: Self.lyingLinkOwnsJSON)
 
         let button = TransportAppearance.appearance(for: s.launch[0],
                                                     linkOwned: s.linkOwnsTransport)
 
         XCTAssertFalse(button.acceptsTap,
-                       "link_owns is a LIVE claim; honouring it is right. The fix belongs in whoever LIES.")
+                       "link_owns is a LIVE claim; honoring it is right. The fix belongs in whoever LIES.")
     }
 
     /// The Touch has no Link-phase block (`xf*`), so `phaseHealth` must be nil rather
